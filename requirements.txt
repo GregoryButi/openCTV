@@ -1,0 +1,68 @@
+agd==0.2.5
+CacheControl==0.14.0
+certifi==2024.2.2
+charset-normalizer==2.1.1
+click @ file:///croot/click_1698129812380/work
+cloudpickle @ file:///croot/cloudpickle_1683040006038/work
+contourpy @ file:///home/conda/feedstock_root/build_artifacts/contourpy_1712429891065/work
+cycler @ file:///home/conda/feedstock_root/build_artifacts/cycler_1696677705766/work
+cytoolz @ file:///croot/cytoolz_1701723583781/work
+dask @ file:///croot/dask-core_1715838601404/work
+deepdiff==7.0.1
+dipy==1.9.0
+fonttools @ file:///home/conda/feedstock_root/build_artifacts/fonttools_1712344590944/work
+fsspec @ file:///croot/fsspec_1714461537038/work
+h5py==3.11.0
+HFMpy==0.2.13
+idna==3.7
+imagecodecs-lite @ file:///home/conda/feedstock_root/build_artifacts/imagecodecs-lite_1716011159782/work
+imageio @ file:///croot/imageio_1707247282708/work
+importlib-metadata @ file:///croot/importlib_metadata-suite_1704813515092/work
+importlib_resources @ file:///home/conda/feedstock_root/build_artifacts/importlib_resources_1711040877059/work
+kiwisolver @ file:///home/conda/feedstock_root/build_artifacts/kiwisolver_1648854392795/work
+lazy_loader @ file:///croot/lazy_loader_1695850097191/work
+locket @ file:///opt/conda/conda-bld/locket_1652903118915/work
+matplotlib @ file:///croot/matplotlib-suite_1713336378214/work
+msgpack==1.0.8
+munkres==1.1.4
+networkx @ file:///croot/networkx_1690561992265/work
+nibabel==5.2.1
+numpy==1.24.4
+olefile @ file:///home/conda/feedstock_root/build_artifacts/olefile_1701735466804/work
+opentps==1.0.1
+ordered-set==4.1.0
+packaging @ file:///home/conda/feedstock_root/build_artifacts/packaging_1710075952259/work
+pandas==1.5.3
+partd @ file:///croot/partd_1698702562572/work
+Pillow==9.5.0
+pydicom @ file:///home/conda/feedstock_root/build_artifacts/pydicom_1702744017281/work
+pymedphys==0.39.3
+pyparsing @ file:///home/conda/feedstock_root/build_artifacts/pyparsing_1652235407899/work
+PyQt5==5.15.10
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.13.0
+pyqtgraph==0.13.7
+python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/python-dateutil_1709299778482/work
+pytz==2024.1
+pywavelets @ file:///croot/pywavelets_1705049820073/work
+PyYAML @ file:///croot/pyyaml_1698096049011/work
+requests==2.28.1
+scikit-image @ file:///croot/scikit-image_1682528309703/work
+scipy==1.9.1
+setuptools-scm==8.1.0
+SimpleITK==2.2.1
+sip @ file:///home/conda/feedstock_root/build_artifacts/sip_1646101340685/work
+six @ file:///home/conda/feedstock_root/build_artifacts/six_1620240208055/work
+sparse-dot-mkl==0.8.3
+tifffile @ file:///home/conda/feedstock_root/build_artifacts/tifffile_1591280222285/work
+toml @ file:///home/conda/feedstock_root/build_artifacts/toml_1604308577558/work
+tomli==2.0.1
+toolz @ file:///croot/toolz_1667464077321/work
+tornado @ file:///home/conda/feedstock_root/build_artifacts/tornado_1708363103305/work
+tqdm==4.66.4
+trx-python==0.2.9
+typing_extensions==4.11.0
+unicodedata2 @ file:///home/conda/feedstock_root/build_artifacts/unicodedata2_1695847984941/work
+urllib3==1.26.18
+vtk==9.2.6
+zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1695255097490/work
