@@ -2,7 +2,7 @@ INSTALLATION
 
 Install dependent packages in a virtual environment
 
-$ pip3 install -r requirements.txt
+    pip3 install -r requirements.txt
 
 MODIFICATION OF EXISTING PACKAGES
 
