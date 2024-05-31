@@ -14,9 +14,6 @@ class CTV(ROIMask):
 
   def __init__(self, imageArray=None, origin=(0, 0, 0), spacing=(1, 1, 1)):
     super().__init__(imageArray=imageArray, origin=origin, spacing=spacing)
-          
-  def getVolume(self):
-    return self.imageArray.sum()*self.spacing.prod()    
     
   def smoothMask(self, BS):
 

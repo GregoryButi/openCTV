@@ -54,17 +54,18 @@ class Struct(object):
       for mask in self.masks:
           mask.reduceGrid_mask(cropmask)
           
-  def setMask(self, name, imageArray, spacing):
+  def setMask(self, name, imageArray, spacing=(1, 1, 1), origin=(0, 0, 0)):
       
       mask_found = False
       for mask in self.masks:
           if mask.name == name:
               mask.imageArray = imageArray
               mask.spacing = spacing
+              mask.origin = origin
               mask_found = True
       
       if ~mask_found:   
-          mask = ROIMask(imageArray=imageArray, name=name, spacing=spacing)
+          mask = ROIMask(imageArray=imageArray, name=name, origin=origin, spacing=spacing)
           self.masks.append(mask)
           
   
@@ -90,12 +91,11 @@ class Struct(object):
       self.setMask(name, Sphere, spacing)
                                                
   def smoothMasks(self, names):
-      
-      for mask in self.masks:
-          for name in names:
-              if mask.name == name:
-                  mask.closeMask(struct=compute3DStructuralElement([2, 2, 2], spacing=mask.spacing), tryGPU=True)
-                  mask.openMask(struct=compute3DStructuralElement([2, 2, 2], spacing=mask.spacing), tryGPU=True)
+
+      for name in names:
+          mask = self.getMaskByName(name)
+          mask.closeMask(struct=compute3DStructuralElement([2, 2, 2], spacing=mask.spacing), tryGPU=True)
+          mask.openMask(struct=compute3DStructuralElement([2, 2, 2], spacing=mask.spacing), tryGPU=True)
                   
   def reslice(self, affine, new_spacing):      
 
@@ -109,25 +109,21 @@ class Struct(object):
           
   def getLargestCC(self, name):   
       
-      for mask in self.masks:
-          if mask.name == name:
-              segmentation = mask.imageArray
+      mask = self.getMaskByName(name)
       
-      labels = label(segmentation)
-      largest_cc = labels == np.argmax(np.bincount(labels[segmentation]))
+      labels = label(mask)
+      largest_cc = labels == np.argmax(np.bincount(labels[mask]))
       return largest_cc 
 
   def getBoundingBox(self, name, margin = 5):   
       
-      for mask in self.masks:
-          if mask.name == name:
-              MOI = mask
+      mask = self.getMaskByName(name)
+
+      idX, idY, idZ = np.nonzero(mask.imageArray>0)
       
-      idX, idY, idZ = np.nonzero(MOI.imageArray>0)
+      BB = np.zeros(mask.gridSize, dtype=bool)
+      BB[max(0, min(idX)-margin) : min(max(idX)+margin, mask.gridSize[0] - 1),
+         max(0, min(idY)-margin) : min(max(idY)+margin, mask.gridSize[1] - 1),
+         max(0, min(idZ)-margin) : min(max(idZ)+margin, mask.gridSize[2] - 1)] = True
       
-      BB = np.zeros(MOI.gridSize, dtype=bool)
-      BB[max(0, min(idX)-margin) : min(max(idX)+margin, MOI.gridSize[0] - 1), 
-         max(0, min(idY)-margin) : min(max(idY)+margin, MOI.gridSize[1] - 1), 
-         max(0, min(idZ)-margin) : min(max(idZ)+margin, MOI.gridSize[2] - 1)] = True    
-      
-      return BB               
+      return BB
