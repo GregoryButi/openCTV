@@ -91,3 +91,9 @@ After installing the openTPS package, add the following functions to the Image3D
 
             self.imageArray = (self._imageArray - self.median()) / iqr
 
+After installing the DIPY package, replace line 94 in get_simplified_transform function of DiffeomorphicMap class in imwarp file:
+
+    Dinv = self.domain_grid2world
+
+    
+
