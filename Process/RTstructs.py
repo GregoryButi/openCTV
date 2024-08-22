@@ -28,24 +28,24 @@ class Struct(object):
   def masks(self, list):
       self._masks = list  
   
-  def loadContours_folder(self, folder_path, contour_names):
+  def loadContours_folder(self, folder_path, file_names, contour_names=None):
       
-      file_list = os.listdir(folder_path) 
-      
+      file_list = os.listdir(folder_path)
       for file_name in file_list:
-          
-          file_path = os.path.join(folder_path, file_name)
-          
+
           # search for the string in each element of the list
-          for i, element in enumerate(contour_names):
+          for i, element in enumerate(file_names):
               if element in file_name:
                  
-                 imageArray, grid2world, spacing = load_nifti(file_path, return_voxsize=True)
+                 imageArray, grid2world, spacing = load_nifti(os.path.join(folder_path, file_name), return_voxsize=True)
                  
                  if not imageArray.dtype == bool:
-                     imageArray = imageArray>=0.5
-                 
-                 mask = ROIMask(imageArray=imageArray, name=element, spacing=spacing)
+                     imageArray = imageArray >= 0.5
+
+                 if contour_names is not None:
+                    mask = ROIMask(imageArray=imageArray, name=contour_names[i], spacing=spacing)
+                 else:
+                     mask = ROIMask(imageArray=imageArray, name=element, spacing=spacing)
                  
                  self.masks.append(mask)            
   
@@ -59,13 +59,13 @@ class Struct(object):
       mask_found = False
       for mask in self.masks:
           if mask.name == name:
-              mask.imageArray = imageArray
+              mask.imageArray = imageArray >= 0.5
               mask.spacing = spacing
               mask.origin = origin
               mask_found = True
       
       if ~mask_found:   
-          mask = ROIMask(imageArray=imageArray, name=name, origin=origin, spacing=spacing)
+          mask = ROIMask(imageArray=imageArray >= 0.5, name=name, origin=origin, spacing=spacing)
           self.masks.append(mask)
           
   
@@ -115,15 +115,15 @@ class Struct(object):
       largest_cc = labels == np.argmax(np.bincount(labels[mask]))
       return largest_cc 
 
-  def getBoundingBox(self, name, margin = 5):   
+  def getBoundingBox(self, name, margin=5):
       
       mask = self.getMaskByName(name)
 
       idX, idY, idZ = np.nonzero(mask.imageArray>0)
       
       BB = np.zeros(mask.gridSize, dtype=bool)
-      BB[max(0, min(idX)-margin) : min(max(idX)+margin, mask.gridSize[0] - 1),
-         max(0, min(idY)-margin) : min(max(idY)+margin, mask.gridSize[1] - 1),
-         max(0, min(idZ)-margin) : min(max(idZ)+margin, mask.gridSize[2] - 1)] = True
+      BB[max(0, min(idX)-margin):min(max(idX)+margin, mask.gridSize[0] - 1),
+         max(0, min(idY)-margin):min(max(idY)+margin, mask.gridSize[1] - 1),
+         max(0, min(idZ)-margin):min(max(idZ)+margin, mask.gridSize[2] - 1)] = True
       
       return BB

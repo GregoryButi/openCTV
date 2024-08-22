@@ -10,120 +10,142 @@ import numpy as np
 import scipy
 
 from Process.Tensors import Tensor
+from Process.Tensors import TensorMetric
+from Process.Tensors import TensorDiffusion
 from Process.Transforms import TransformTensor
 
 class TransformTensorAffine(TransformTensor):
     def __init__(self, mapping):
         super().__init__(mapping=mapping)
+        self._T_mov2static = None
+        self._T_static2mov = None
+        # Define attributes to be consistent with TransformTensorDeformable
+        self.domain_shape = mapping.codomain_shape
+        self.codomain_shape = mapping.domain_shape
+        self.domain_grid2world = mapping.codomain_grid2world
+        self.codomain_grid2world = mapping.domain_grid2world
 
     @property
-    def jacAffine(self):
-        if self.jac is None:
-            self.jac = np.tile(np.linalg.inv(self._compute_transformation_matrix())[0:3, 0:3], self.mapping.codomain_shape + (1, 1))
-        return self.jac
+    def T_mov2static(self):
+        if self._T_mov2static is None:
+            self._get_simplified_transform_forward()
+        return self._T_mov2static
+
+    @T_mov2static.setter
+    def T_mov2static(self, array):
+        self._T_mov2static = array
+
+    @property
+    def T_static2mov(self):
+        if self._T_static2mov is None:
+            self.T_static2mov = np.linalg.inv(self.T_mov2static)
+        return self._T_static2mov
+
+    @T_static2mov.setter
+    def T_static2mov(self, array):
+        self._T_static2mov = array
+
+    @property
+    def jacobianDomain(self):
+        if self.jacDomain is None:
+            self.jacDomain = np.tile(np.linalg.inv(self.T_mov2static)[0:3, 0:3], self.domain_shape + (1, 1))
+        return self.jacDomain
+
+    def jacobianCodomain(self):
+        if self.jacCodomain is None:
+            self.jacCodomain = np.tile(np.linalg.inv(self.T_mov2static)[0:3, 0:3], self.codomain_shape + (1, 1))
+        return self.jacCodomain
   
-    def _compute_transformation_matrix(self):
+    def _get_simplified_transform_forward(self):
         
-        domain_world2grid = np.linalg.inv(self.mapping.domain_grid2world)
+        codomain_world2grid = np.linalg.inv(self.codomain_grid2world)
 
         # world to world (affine.affine is static2moving in world space)
         A = np.linalg.inv(self.mapping.affine)
 
         # transformation in grid space: grid space (moving) --> grid space (static)
-        T_mov2static = np.dot(np.dot(domain_world2grid,A),self.mapping.codomain_grid2world)  
-        
-        return T_mov2static
-    
-    def getTensorMetricTransformed(self, tensor, mask=[]):
-        
-        if mask == []:
-            idX, idY, idZ = np.nonzero(np.ones(self.mapping.codomain_shape))
-        else:
-            idX, idY, idZ = np.nonzero(mask)
-            
-        # initialize
-        imageTensor = np.zeros(tensor.gridSize)  
+        self.T_mov2static = np.dot(np.dot(self.domain_grid2world, A), codomain_world2grid)
+
+    def getTensorMetricTransformed(self, tensor, mask=None):
+
+        imageTensor = np.zeros(tuple(self.domain_shape) + (3, 3))  # initialize
+        idX, idY, idZ = self._getIndices_codomain(mask) # use codomain function!
         
         # transform tensor
-        imageTensor[idX, idY, idZ, ...] = np.matmul(self.transpose(self.jacAffine)[idX, idY, idZ, ...], np.matmul(tensor.imageArray[idX, idY, idZ, ...], self.jacAffine[idX, idY, idZ, ...]))
+        imageTensor[idX, idY, idZ, ...] = np.matmul(self.transpose(self.jacobianDomain)[idX, idY, idZ, ...], np.matmul(tensor.imageArray[idX, idY, idZ, ...], self.jacobianDomain[idX, idY, idZ, ...]))
     
         # interpolate
-        imageTensor = self.deformTensors(imageTensor, self._compute_transformation_matrix(), output_shape=self.mapping.domain_shape)
+        imageTensor = self._deformTensor(imageTensor)
+
         
-        return Tensor(imageArray=imageTensor)    
+        return TensorMetric(imageArray=imageTensor)
   
-    def getTensorDiffusionTransformed(self, tensor, method='ICT', mask=[]):
-          
-      if mask == []:
-          idX, idY, idZ = np.nonzero(np.ones(self.mapping.codomain_shape))
-      else:
-          idX, idY, idZ = np.nonzero(mask)
-          
-      # initialize
-      imageTensor = np.zeros(tensor.gridSize)  
+    def getTensorDiffusionTransformed(self, tensor, method='ICT', mask=None):
       
       if method == 'ICT':
+
+        imageTensor = np.zeros(tuple(self.domain_shape) + (3, 3))  # initialize
+        idX, idY, idZ = self._getIndices_codomain(mask) # use codomain function!
                  
         # transform tensor                     
-        imageTensor[idX, idY, idZ, ...] = np.matmul(self.transpose(self.jacAffine)[idX, idY, idZ, ...], np.matmul(tensor.imageArray[idX, idY, idZ, ...], self.jacAffine[idX, idY, idZ, ...]))
+        imageTensor[idX, idY, idZ, ...] = np.matmul(self.transpose(self.jacobianDomain)[idX, idY, idZ, ...], np.matmul(tensor.imageArray[idX, idY, idZ, ...], self.jacobianDomain[idX, idY, idZ, ...]))
   
         # interpolate
-        imageTensor = self.deformTensors(imageTensor, self._compute_transformation_matrix(), output_shape=self.mapping.domain_shape)
-        
+        imageTensor = self._deformTensor(imageTensor)
+
       elif method == 'PPD':
+
+        imageTensor = np.zeros(tuple(self.codomain_shape) + (3, 3))  # initialize
+        idX, idY, idZ = self._getIndices_domain(mask) # use domain function!
         
-        # transform tensor image to domain grid and initialize tensor object
-        tensorDomain = Tensor(imageArray=self.deformTensors(tensor.imageArray, self._compute_transformation_matrix(), output_shape=self.mapping.domain_shape), type='diffusion')                    
-        
-        jacInv = self.invert(self.jacAffine)
+        # transform tensor and initialize tensor object
+        tensorCodomain = Tensor(imageArray=self._deformTensor(tensor.imageArray))
+
+        jacInv = self.T_static2mov[0:3, 0:3]
         for i in range(len(idX)):
             
-            jac_voxel = jacInv[idX[i], idY[i], idZ[i], :, :]
-            e1 = tensorDomain.evecs[idX[i], idY[i], idZ[i], :, 0]
-            e2 = tensorDomain.evecs[idX[i], idY[i], idZ[i], :, 1]
+            e1 = tensorCodomain.evecs[idX[i], idY[i], idZ[i], :, 0]
+            e2 = tensorCodomain.evecs[idX[i], idY[i], idZ[i], :, 1]
             
-            R = self.rotation_component_affine(jac_voxel, e1, e2)
+            R = self.rotation_component_affine(jacInv, e1, e2)
   
-            imageTensor[idX[i], idY[i], idZ[i], :, :] = np.dot(np.dot(R, tensorDomain.imageArray[idX[i], idY[i], idZ[i], :, :]), R.T)
+            imageTensor[idX[i], idY[i], idZ[i], :, :] = np.dot(np.dot(R, tensorCodomain.imageArray[idX[i], idY[i], idZ[i], :, :]), R.T)
   
       elif method == 'FS':
+
+          imageTensor = np.zeros(tuple(self.codomain_shape) + (3, 3))  # initialize
+          idX, idY, idZ = self._getIndices_domain(mask) # use domain function!
           
-          # transform tensor image to domain grid
-          imageTensorDomain = self.deformTensors(tensor.imageArray, self._compute_transformation_matrix(), output_shape=self.mapping.domain_shape)     
-      
+          # transform tensor
+          tensorCodomain = self._deformTensor(tensor.imageArray)
+
           # extract rotation matrix
-          R = self.rigid_rotation_component(self.invert(self.jacAffine)[0,0,0,...], self.transpose(self.invert(self.jacAffine))[0,0,0,...])
-          
-          imageTensor[idX,idY,idZ,...] = np.matmul(np.matmul(R, imageTensorDomain[idX,idY,idZ,...]), R.T) 
+          R = np.matmul(scipy.linalg.fractional_matrix_power(np.matmul(self.T_static2mov[0:3, 0:3], self.T_static2mov[0:3, 0:3].T), -1/2), self.T_static2mov[0:3, 0:3])
+
+          imageTensor[idX, idY, idZ, ...] = np.matmul(np.matmul(R, tensorCodomain[idX, idY, idZ, ...]), R.T)
               
-      return Tensor(imageArray=imageTensor)
+      return TensorDiffusion(imageArray=imageTensor)
   
-    def getJacobianDeterminantDomain(self):
+    def getJacobianDeterminantCodomain(self):
           
-        # inverse Jacobian in grid space is equal to T_mov2static, so we need to invert for the Jacobian
-        T_static2mov = np.linalg.inv(self._compute_transformation_matrix()[0:3,0:3])
-          
-        jacDetDomain = np.linalg.det(T_static2mov)*np.ones(self.mapping.domain_shape)        
-        print('Statistics Jacobian determinant: ' + str(jacDetDomain.mean()) + ' +/- ' + str(jacDetDomain.std()))
-        return jacDetDomain
-    
-    @staticmethod
-    def deformTensors(tensor, T_grid2grid, output_shape=None):
+        jacDetCodomain = np.linalg.det(self.T_static2mov[0:3, 0:3])*np.ones(self.codomain_shape)
+        print('Jacobian determinant: ' + str(jacDetCodomain[0, 0, 0]))
+        return jacDetCodomain
+
+    # imageTensor = self._deformTensor(imageTensor, self.get_simplified_transform_forward(), output_shape=self.mapping.codomain_shape)
+    #@staticmethod
+    #def _deformTensor(tensor, T_grid2grid, output_shape=None):
         
-        xx = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 0], np.linalg.inv(T_grid2grid), output_shape=output_shape)
-        xy = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 1], np.linalg.inv(T_grid2grid), output_shape=output_shape)
-        xz = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
-        yy = scipy.ndimage.affine_transform(tensor[:, :, :, 1, 1], np.linalg.inv(T_grid2grid), output_shape=output_shape)
-        yz = scipy.ndimage.affine_transform(tensor[:, :, :, 1, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
-        zz = scipy.ndimage.affine_transform(tensor[:, :, :, 2, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #xx = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 0], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #xy = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 1], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #xz = scipy.ndimage.affine_transform(tensor[:, :, :, 0, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #yy = scipy.ndimage.affine_transform(tensor[:, :, :, 1, 1], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #yz = scipy.ndimage.affine_transform(tensor[:, :, :, 1, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
+        #zz = scipy.ndimage.affine_transform(tensor[:, :, :, 2, 2], np.linalg.inv(T_grid2grid), output_shape=output_shape)
         
-        tensorDeformed = np.array([[xx, xy, xz], 
-                                   [xy, yy, yz], 
-                                   [xz, yz, zz]])
-        tensorDeformed = np.transpose(tensorDeformed, [2, 3, 4, 0, 1])
+        #tensorDeformed = np.array([[xx, xy, xz],
+        #                           [xy, yy, yz],
+        #                           [xz, yz, zz]])
+        #tensorDeformed = np.transpose(tensorDeformed, [2, 3, 4, 0, 1])
         
-        return tensorDeformed 
-    
-    @staticmethod    
-    def rigid_rotation_component(Jac, Jac_T):
-        return np.matmul(scipy.linalg.fractional_matrix_power(np.matmul(Jac, Jac_T), -1/2), Jac)
+        #return tensorDeformed

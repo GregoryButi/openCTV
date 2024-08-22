@@ -29,7 +29,7 @@ class TensorMetric(Tensor):
         imageTensor[domain] = np.array([[Ixx, Ixy, Ixz],
                                         [Ixy, Iyy, Iyz], 
                                         [Ixz, Iyz, Izz]])[domain]
-        imageTensor = np.transpose(imageTensor,[2,3,4,0,1])
+        imageTensor = np.transpose(imageTensor, [2, 3, 4, 0, 1])
                     
         # set attributes
         self.imageArray = imageTensor
@@ -39,17 +39,17 @@ class TensorMetric(Tensor):
     def getMetricTensorFMM(self, domain, dict):
 
         idX, idY, idZ = np.nonzero(domain)
-        
-        MT = np.zeros(self.gridSize)
-        MT[..., 0:3, 0:3] = np.eye(3)
+
         if dict['model'] == 'Nonuniform':
-            
+
+            MT = np.zeros(self.gridSize)
+            MT[..., 0:3, 0:3] = np.eye(3)
             MT[domain] = np.eye(3) * dict['resistance']
 
         elif dict['model'] == 'Anisotropic' and dict['model-DTI'] == 'Clatz':
             
             # compute normalization such that determinant of tensor is 1
-            N = (self.evals[idX, idY, idZ, 0]*self.evals[idX, idY, idZ, 1]*self.evals[idX, idY, idZ, 2]) ** (-1/3)
+            N = (self.evals[idX, idY, idZ, 0] * self.evals[idX, idY, idZ, 1] * self.evals[idX, idY, idZ, 2]) ** (-1/3)
             
             # perform tensor sharpening
             evals = dict['resistance'] * sharpen(np.multiply(N[..., np.newaxis], self.evals[idX, idY, idZ]), dict['anisotropy'])
@@ -59,15 +59,33 @@ class TensorMetric(Tensor):
         elif dict['model'] == 'Anisotropic' and dict['model-DTI'] == 'Rekik':
     
             Lambda = np.ones(self.evals.shape)  
-            Lambda[idX, idY, idZ, 2] = dict['resistance']
+            Lambda[idX, idY, idZ, 2] = dict['resistance'] # set smallest eigenvalue
             evals = Lambda[idX, idY, idZ]        
             
-            MT = self.reconstruct_tensor_mask(self.evecs, evals, idX, idY, idZ)  
-              
+            MT = self.reconstruct_tensor_mask(self.evecs, evals, idX, idY, idZ)
+
+        elif dict['model'] == 'Anisotropic' and dict['model-DTI'] == 'Buti':
+
+            Lambda = np.ones(self.evals.shape)
+            Lambda[idX, idY, idZ, 2] = dict['resistance']  # set smallest eigenvalue within mask
+
+            # compute normalization such that determinant of tensor is 1
+            N = (Lambda[..., 0] * Lambda[..., 1] * Lambda[..., 2]) ** (-1 / 3)
+
+            # normalize entire image
+            evals = np.multiply(N[..., np.newaxis], Lambda)
+
+            MT = self.reconstruct_tensor(self.evecs, evals)
+
         return MT    
     
     def setBarrier(self, mask):
         self.imageArray[mask] = np.eye(3) * 1e+14
+
+    def getDiffusionTensor(self):
+        from Process.Tensors.TensorDiffusion import TensorDiffusion
+        dt = TensorDiffusion(imageArray=self.getInverse(), origin=self.origin, spacing=self.spacing)
+        return dt
         
 def sharpen(evals, power):
 

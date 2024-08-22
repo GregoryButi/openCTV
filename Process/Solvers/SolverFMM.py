@@ -17,7 +17,7 @@ class SolverFMM(Solver):
     def __init__(self, source=None, barriers=None, tensor=None, domain=None):
       
       if tensor is None:
-          MT = np.zeros(tuple(source.gridSize) + (3,3))
+          MT = np.zeros(tuple(source.gridSize) + (3, 3))
           MT[..., 0:3, 0:3] = np.eye(3)          
           tensor = TensorMetric(imageArray=MT, spacing=source.spacing, origin=source.origin)
     
@@ -58,12 +58,12 @@ class SolverFMM(Solver):
     
         # initialize metric tensor components
     
-        MTxx = self.tensor.imageArray[...,0,0]
-        MTyy = self.tensor.imageArray[...,1,1]
-        MTzz = self.tensor.imageArray[...,2,2]
-        MTxy = self.tensor.imageArray[...,0,1]
-        MTxz = self.tensor.imageArray[...,0,2]
-        MTyz = self.tensor.imageArray[...,1,2]
+        MTxx = self.tensor.imageArray[..., 0, 0]
+        MTyy = self.tensor.imageArray[..., 1, 1]
+        MTzz = self.tensor.imageArray[..., 2, 2]
+        MTxy = self.tensor.imageArray[..., 0, 1]
+        MTxz = self.tensor.imageArray[..., 0, 2]
+        MTyz = self.tensor.imageArray[..., 1, 2]
     
         # define metric tensor
     
@@ -72,13 +72,15 @@ class SolverFMM(Solver):
               [MTxz, MTyz, MTzz]]
                             
         # Run Riemann model
-    
+
+        hfmIn['walls'] = self.barriers.imageArray
         hfmIn['metric'] = Riemann(MT)
-        hfmIn['exportValues'] = 1
-        hfmIn['exportGeodesicFlow'] = 1
+        #hfmIn['stopAtDistance'] = 20.
+        #hfmIn['euclideanScale'] = list(self.source.spacing)
+        #hfmIn['stopAtEuclideanLength'] = 20. # stopping criteria
         hfmOut = hfmIn.Run()
     
-        # store result in list
+        # store result
         riemann3D = hfmOut['values']
-    
+        # euclidean3D = hfmOut['euclideanLengths'] # Euclidean length of geodesics
         return riemann3D

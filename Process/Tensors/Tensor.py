@@ -112,7 +112,8 @@ class Tensor(Image3D):
     self.imageArray = imageTensor
     self.spacing = spacing
     self.origin = affine[:3, 3]
-      
+
+
   def _eig_decomp(self):
 
       print("Perform eigen-decomposition")
@@ -128,17 +129,15 @@ class Tensor(Image3D):
       sorted_evals = np.take_along_axis(corrected_evals, sorted_indices, axis=-1)
 
       # Use advanced indexing to sort corrected_evecs
-      sorted_evecs = np.empty_like(corrected_evecs)
-      for i in range(corrected_evecs.shape[-1]):
-        sorted_evecs[..., i, :] = np.take_along_axis(corrected_evecs, sorted_indices[..., None], axis=-2)[..., i, :]
+      sorted_evecs = np.transpose(np.take_along_axis(np.transpose(corrected_evecs, [0, 1, 2, 4, 3]), sorted_indices[..., None], axis=-2), [0, 1, 2, 4, 3])
 
       # Set attributes
-      self._evals = sorted_evals
-      self._evecs = sorted_evecs
       self.eig_decomp_done = True
+      self.evals = sorted_evals
+      self.evecs = sorted_evecs
 
   def get_FA_MD_RGB(self):
-    # Compute scalar images
+    # Compute scalar images with DIPY
     FA = fractional_anisotropy(self.evals)
     MD = mean_diffusivity(self.evals)
     RGB = color_fa(FA, self.evecs)
@@ -146,11 +145,13 @@ class Tensor(Image3D):
     return FA, MD, RGB
 
   def getInverse(self):
-      
      # Invert tensor: A = Q*V*Q^-1 --> A^-1 = Q*V^-1*Q^-1
      imageArray = self.reconstruct_tensor(self.evecs, 1.0 / self.evals)
      
-     return imageArray 
+     return imageArray
+
+  def getDeterminant(self):
+      return np.linalg.det(self.imageArray)
          
   def reslice(self, affine, new_spacing):
 
@@ -180,50 +181,6 @@ class Tensor(Image3D):
       super().reduceGrid_mask(mask)
       # update attributes 
       self.eig_decomp_done = False
-      
-                  
-  # def visualizeTensor(self, ROI):
-      
-  #     from dipy.viz import actor, window 
-  #     from dipy.data import get_sphere
-
-  #     idX, idY, idZ = np.nonzero(ROI)
-      
-  #     sphere = get_sphere('repulsion724')
-        
-  #     idx_min = idX.min() + 10
-  #     idx_max = idX.max() - 10
-  #     idy_min = idY.min() + 10
-  #     idy_max = idY.max() - 10
-  #     idz_min = int(np.mean(idZ))
-  #     idz_max = idz_min + 1
-        
-  #     evals = self.evals[idx_min:idx_max, idy_min:idy_max, idz_min:idz_max]
-  #     evecs = self.evecs[idx_min:idx_max, idy_min:idy_max, idz_min:idz_max]
-  #     RGB = self.RGB[idx_min:idx_max, idy_min:idy_max, idz_min:idz_max]
-        
-  #     cfa = RGB
-  #     #cfa /= self.RGB[np.logical_and(np.logical_and(RTs.CorpusCallosum,RTs.WM),~RTs.BS)].max()
-  #     #cfa /= cfa.max()
-        
-  #     scene = window.Scene()
-  #     scene.add(actor.tensor_slicer(evals, evecs, scalar_colors=cfa,
-  #                                     sphere=sphere, scale=2., mask=ROI[idx_min:idx_max, idy_min:idy_max, idz_min:idz_max]))
-  #     scene.background((0, 0, 0))
-        
-  #     interactive = False
-        
-  #     if interactive:
-  #        window.show(scene)
-        
-  #     print('Saving illustration as tensor_ellipsoids.png')
-  #     window.record(scene, n_frames=1,
-  #                     out_path='tensor_ellipsoids.png', size=(600, 600))
-        
-  #     scene.clear()
-        
-  #     plt.imshow(np.transpose(np.flip(RGB[:, :,0,:],axis=1),(1,0,2)))
-  #     plt.show()
 
   @staticmethod
   def reconstruct_tensor(evecs, evals):

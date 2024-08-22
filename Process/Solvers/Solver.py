@@ -37,9 +37,6 @@ class Solver(object):
       if self._barriers is not None and self.domain is not None:
           self._barriers.reduceGrid_mask(self.domain)
       
-      if self.tensor is not None and self._barriers is not None:
-            self._tensor.setBarrier(self._barriers.imageArray)   
-      
   @property
   def tensor(self):
       return self._tensor

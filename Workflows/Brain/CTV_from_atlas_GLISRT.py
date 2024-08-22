@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass as com
 from dipy.io.image import load_nifti
 import copy
-from matplotlib.widgets import Slider
 
 from opentps.core.data.images._image3D import Image3D
 from Process.Tensors import TensorMetric
@@ -23,30 +22,46 @@ from Analysis.contourComparison import dice_score, percentile_hausdorff_distance
 path_folder_output = '/home/gregory/Documents/Projects/CTV_RO1/Results/Glioma'
 
 # Patient IDs
-#PIDs = ['GLI_009_GBM', 'GLI_001_GBM', 'GLI_008_GBM', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_003_AAC', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC', 'GLI_006_ODG']
-#Margins = [20, 20, 20, 20, 20, 20, 20, 10, 10, 10]
-PIDs = ['GLI_003_AAC'] # GLI_003_AAC
+#PIDs = ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
+#Margins = [20, 20, 20, 20, 10, 20, 20, 20, 10, 10]
+PIDs = ['GLI_003_AAC']  # GLI_003_AAC
 Margins = [20]
 
-for PID, margin in  zip(PIDs, Margins):
+# parameter space
+
+resistance = [0.5, 0.1, 0.05]
+anisotropy = [1.]
+
+# define model
+
+modelDTI = {
+    'obstacle': True,
+    'model': 'Anisotropic',  # None, 'Nonuniform', 'Anisotropic'
+    'model-DTI': 'Rekik',  # 'Clatz', 'Rekik'
+    'resistance': 0.1,
+    'anisotropy': 1.0
+}
+
+for PID, margin in zip(PIDs, Margins):
 
     # input
-    
-    path_MRI = f'/home/gregory/Documents/Projects/CTV_RO1/Data/MGH_Glioma/GLIS-RT/{PID}/MNI152/T1_norm.nii.gz'
-    path_RTstructs = f'/home/gregory/Documents/Projects/CTV_RO1/Data/MGH_Glioma/GLIS-RT/{PID}/MNI152/'
-    path_tensor = f'/home/gregory/Documents/Projects/CTV_RO1/Data/MGH_Glioma/GLIS-RT/{PID}/MNI152/MT_deformable_PDR_DIPY.nii.gz'
+
+    path_MRI = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/Therapy-scan/MRI_CT/T1c_norm.nii.gz'
+    path_RTstructs = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/Therapy-scan/Structures'
+    path_tensor = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/MT_warped.nii.gz'
     
     # load data
     
     MRI, grid2world, voxel_size = load_nifti(path_MRI, return_voxsize=True)
     
     tensor = TensorMetric()
-    tensor.loadTensor(path_tensor, 'metric')
+    tensor.loadTensor(path_tensor)
     
     # load structures
     
     RTs = Struct()
-    RTs.loadContours_folder(path_RTstructs, ['GTV', 'CTV', 'BS', 'CC', 'Brain_mask', 'WM', 'GM', 'External'])
+    RTs.loadContours_folder(path_RTstructs, ['GTV_T1c', 'CTV_T1c', 'BS_T1c', 'CC_T1c', 'Brain', 'WM', 'GM', 'External_T1c'],
+                            contour_names=['GTV', 'CTV', 'BS', 'CC', 'Brain_mask', 'WM', 'GM', 'External'])
     
     RTs.smoothMasks(['GTV', 'CTV', 'CC', 'Brain_mask', 'External'])
     
@@ -77,30 +92,15 @@ for PID, margin in  zip(PIDs, Margins):
     BS = RTs.getMaskByName('BS').imageArray
     WM = RTs.getMaskByName('WM').imageArray
     GM = RTs.getMaskByName('GM').imageArray
-        
-    # define model
-    
-    modelDTI = {
-        'obstacle': True,
-        'model': 'Anisotropic', # None, 'Nonuniform', 'Anisotropic'
-        'model-DTI': 'Clatz', # 'Clatz', 'Rekik'
-        'resistance': 0.1,
-        'anisotropy': 1.0
-        }
     
     # Run fast marching method for classic CTV
     
     ctv_classic = CTVGeometric()
-    ctv_classic.setCTV_isodistance(margin, RTs, model = {'model':None, 'obstacle':True})
+    ctv_classic.setCTV_isodistance(margin, RTs, model={'model': None, 'obstacle': True})
     volume = ctv_classic.getVolume()
     
     # smooth masks and remove holes
     ctv_classic.smoothMask(BS)
-    
-    # parameter space
-
-    resistance = [0.5, 0.1, 0.05]
-    anisotropy = [1.]
     
     # Initialize arrays for CTVs and evaluation metrics
     CTVs_dti = np.zeros(np.append(MRI.gridSize, [len(resistance),len(anisotropy)])).astype(bool)
@@ -113,11 +113,11 @@ for PID, margin in  zip(PIDs, Margins):
     for j in range(len(resistance)): 
                 
         ctv_wmgm = CTVGeometric()
-        ctv_wmgm.setCTV_volume(volume, RTs, tensor=copy.deepcopy(tensor), model = {'aniso': True, 'obstacle': True, 'model': 'Nonuniform', 'resistance': resistance[j]}, x0 = margin)
+        ctv_wmgm.setCTV_volume(volume, RTs, tensor=copy.deepcopy(tensor), model={'aniso': True, 'obstacle': True, 'model': 'Nonuniform', 'resistance': resistance[j]}, x0 = margin)
         ctv_wmgm.smoothMask(BS)
         
         # store mask in array
-        CTVs_wmgm[:,:,:, j] = ctv_wmgm.imageArray
+        CTVs_wmgm[..., j] = ctv_wmgm.imageArray
         
         # Iterate over parameter values
         for k in range(len(anisotropy)):
@@ -134,28 +134,28 @@ for PID, margin in  zip(PIDs, Margins):
             ctv_dti.smoothMask(BS)
             
             # store mask in array
-            CTVs_dti[:,:,:, j, k] = ctv_dti.imageArray
+            CTVs_dti[:, :, :, j, k] = ctv_dti.imageArray
         
             # evaluate CTV against reference
             
             # exclude GTV from volume overlap analysis
-            eval_metrics[k][j]['DSC'] = dice_score(np.logical_and(ctv_classic.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
-            eval_metrics_wmgm[k][j]['DSC'] = dice_score(np.logical_and(ctv_wmgm.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
-            
-            eval_metrics[k][j]['JI'] = jaccard_index(ctv_classic.imageArray, ctv_dti.imageArray)
-            eval_metrics_wmgm[k][j]['JI'] = jaccard_index(ctv_wmgm.imageArray, ctv_dti.imageArray)
-            
-            eval_metrics[k][j]['HD'] = hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints())
-            eval_metrics_wmgm[k][j]['HD'] = hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints())
-            
-            eval_metrics[k][j]['HD95'] = percentile_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=95)
-            eval_metrics_wmgm[k][j]['HD95'] = percentile_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=95)
-            
-            eval_metrics[k][j]['HD98'] = percentile_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=98)
-            eval_metrics_wmgm[k][j]['HD98'] = percentile_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=98)
-            
-            eval_metrics[k][j]['HDmean'] = mean_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints())
-            eval_metrics_wmgm[k][j]['HDmean'] = mean_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints())
+            # eval_metrics[k][j]['DSC'] = dice_score(np.logical_and(ctv_classic.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
+            # eval_metrics_wmgm[k][j]['DSC'] = dice_score(np.logical_and(ctv_wmgm.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
+            #
+            # eval_metrics[k][j]['JI'] = jaccard_index(ctv_classic.imageArray, ctv_dti.imageArray)
+            # eval_metrics_wmgm[k][j]['JI'] = jaccard_index(ctv_wmgm.imageArray, ctv_dti.imageArray)
+            #
+            # eval_metrics[k][j]['HD'] = hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints())
+            # eval_metrics_wmgm[k][j]['HD'] = hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints())
+            #
+            # eval_metrics[k][j]['HD95'] = percentile_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=95)
+            # eval_metrics_wmgm[k][j]['HD95'] = percentile_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=95)
+            #
+            # eval_metrics[k][j]['HD98'] = percentile_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=98)
+            # eval_metrics_wmgm[k][j]['HD98'] = percentile_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints(), percentile=98)
+            #
+            # eval_metrics[k][j]['HDmean'] = mean_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints())
+            # eval_metrics_wmgm[k][j]['HDmean'] = mean_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints())
         
     # save results
     
@@ -171,10 +171,7 @@ for PID, margin in  zip(PIDs, Margins):
     # with open(os.path.join(os.path.join(path_folder_output,modelDTI['model-DTI']),'params_'+PID+'.txt'), 'wb') as f:
     #     pickle.dump(anisotropy,f)     
     
-# Create 2D plots      
-
-#_, _, maskZ_tmp = np.nonzero(CC)
-#Z_coord = int(np.mean(maskZ_tmp))
+# Create 2D plots
 
 # GTV COM for display
 COM = np.array(com(GTV))
@@ -188,18 +185,14 @@ plotCC = CC.astype(float).copy()
 plotCC[~CC] = np.NaN
 plotGTV = GTV.astype(float).copy()
 plotGTV[~GTV] = np.NaN
-ctv_dti.distance3D[BS] = np.NaN
 
-#idx = [1,2,3]
-idx = [0,1,2]
-
-fig, axes = plt.subplots(1, len(idx))
+fig, axes = plt.subplots(1, len(resistance))
 
 # Remove spacing between subplots
 fig.subplots_adjust(wspace=0.01)
 
 i = 0
-for j in idx:
+for j in range(len(resistance)):
     axes[i].imshow(np.flip(plotMR[:, :, Z_coord].transpose(), axis=0), cmap='gray', vmin=0, vmax=2.5)
     axes[i].contourf(np.flip(plotGTV[:, :, Z_coord].transpose(), axis=0), colors='yellow', alpha=0.4)
     axes[i].contourf(np.flip(plotCC[:, :, Z_coord].transpose(), axis=0), colors='blue', alpha=0.4)
@@ -216,106 +209,8 @@ for j in idx:
 
     axes[i].tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
     
-    i+=1
+    i += 1
     
 #plt.savefig(os.path.join(os.getcwd(),'CTV_'+modelDTI['model-DTI']+'.pdf'), format='pdf',bbox_inches='tight')
-
-plt.show()
-    
-# Build interactive plot
-
-# %matplotlib qt
-# %matplotlib inline
-
-def plot_isodistance(ax, Z, i, j, k):
-
-    fig.add_axes(ax)
-    plt.imshow(np.flip(plotMR[:, :, Z].transpose(), axis=0), cmap='gray')
-    plt.clim(0,2.5)
-    
-    plt.contourf(np.flip(plotGTV[:, :, Z].transpose(), axis=0), colors='yellow', alpha=0.5)
-    #plt.contour(np.flip(BS[:, :, Z].transpose(), axis=0), colors='yellow', linewidths=0.5)
-    plt.contourf(np.flip(plotCC[:, :, Z].transpose(), axis=0), colors='blue', alpha=0.5)  
-    
-    #plt.contour(np.flip(ctv_wmgm.imageArray[:, :, Z].transpose(), axis=0), colors='red')
-    #plt.contour(np.flip(ctv_classic.imageArray[:, :, Z].transpose(), axis=0), colors='blue')
-    plt.contour(np.flip(CTVs_dti[:, :, Z, j, k].transpose(), axis=0), colors='white')
-    
-    plt.tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
-
-# Plot
-fig = plt.figure()
-plt.axis('off')
-# plt.title('Interactive slider')
-
-ax = fig.add_subplot(111)
-plot_isodistance(ax, Z_coord, 0, 0, 0)
-
-# Define sliders
-
-# Make a vertically oriented slider to control the slice
-# position x, position y, x-length, y-length
-alpha_axis_1 = plt.axes([0.2, 0.2, 0.0125, 0.62])
-alpha_slider_1 = Slider(
-    ax=alpha_axis_1,
-    label="Slice",
-    valmin=0,
-    valmax=MRI.gridSize[2],
-    valinit=Z_coord,
-    valstep=1,
-    orientation="vertical"
-)
-
-# Make horizontal oriented slider to control the distance
-alpha_axis_2 = plt.axes([0.3, 0.06, 0.4, 0.03])
-alpha_slider_2 = Slider(
-    ax=alpha_axis_2,
-    label='Margin (mm)',
-    valmin=0,
-    valmax=0,
-    valinit=0,
-    valstep=1
-)
-
-# Make horizontal oriented slider to control the ''isotropicness''
-alpha_axis_3 = plt.axes([0.3, 0.02, 0.4, 0.03])
-alpha_slider_3 = Slider(
-    ax=alpha_axis_3,
-    label='Resistance',
-    valmin=0,
-    valmax=len(resistance)-1,
-    valinit=0,
-    valstep=1
-)
-
-# # Make horizontal oriented slider to control the ''isotropicness''
-# alpha_axis_4 = plt.axes([0.3, 0.0, 0.4, 0.03])
-# alpha_slider_4 = Slider(
-#     ax=alpha_axis_4,
-#     label='Anisotropy',
-#     valmin=0,
-#     valmax=len(anisotropy)-1,
-#     valinit=0,
-#     valstep=1
-# )
-
-
-def update(val):
-    alpha1 = int(alpha_slider_1.val)
-    alpha2 = int(alpha_slider_2.val)
-    alpha3 = int(alpha_slider_3.val)
-    #alpha4 = int(alpha_slider_4.val)
-
-    ax.cla()
-    #plot_isodistance(ax, alpha1, alpha2, alpha3, alpha4)
-    plot_isodistance(ax, alpha1, alpha2, alpha3, 0)
-
-    plt.draw()
-
-
-alpha_slider_1.on_changed(update)
-alpha_slider_2.on_changed(update)
-alpha_slider_3.on_changed(update)
-#alpha_slider_4.on_changed(update)
 
 plt.show()

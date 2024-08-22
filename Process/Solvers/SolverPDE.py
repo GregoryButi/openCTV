@@ -20,8 +20,11 @@ class SolverPDE(Solver):
           tensor = TensorDiffusion(imageArray=DT, spacing=source.spacing, origin=source.origin)
         
       super().__init__(source=source, barriers=barriers, tensor=tensor, domain=domain)
+
+      if self.barriers is not None:
+        self.tensor.setBarrier(self.barriers.imageArray)
     
-    def getDensity(self, timepoint, dict, deltat = 0.01):
+    def getDensity(self, dict, deltat = 0.01):
             
         # get diffusion coefficients      
         Dxx = self.tensor.imageArray[:, :, :, 0, 0]
@@ -38,10 +41,10 @@ class SolverPDE(Solver):
         cells_list = []
         cells = self.source.imageArray*dict['cell_capacity']
         iplot = 0
-        for t in np.linspace(0, timepoint[-1], num=int(timepoint[-1]/deltat), endpoint=True) :
+        for t in np.linspace(0, dict['timepoint'][-1], num=int(dict['timepoint'][-1]/deltat), endpoint=True) :
             
             # store metrics
-            if t >= timepoint[iplot]:
+            if t >= dict['timepoint'][iplot]:
                 
                 cells_list.append(cells)
                 iplot += 1
@@ -49,17 +52,22 @@ class SolverPDE(Solver):
             if np.count_nonzero(np.isnan(cells))>0:
                 print("Loop paused due to np.nan")
                 breakpoint()
-                break 
-                     
+                break
+
+            if np.count_nonzero(cells < 0):
+                print("Loop paused due to negative")
+                breakpoint()
+                break
+
             # compute cell gradients
-            dx_cells, dy_cells, dz_cells = np.gradient(cells, x, y, z)   
-            
+            dx_cells, dy_cells, dz_cells = np.gradient(cells, x, y, z)
+
             diff_term = np.gradient(Dxx * dx_cells + Dxy * dy_cells + Dxz * dz_cells, x, axis=0) + \
                         np.gradient(Dxy * dx_cells + Dyy * dy_cells + Dyz * dz_cells, y, axis=1) + \
-                        np.gradient(Dxz * dx_cells + Dyz * dy_cells + Dzz * dz_cells, z, axis=2)    
-                        
-            if dict['system'] == 'reaction_diffusion': 
-                react_term = dict['proliferation_rate'] * np.multiply(cells, (1 - cells / dict['cell_capacity']))   
+                        np.gradient(Dxz * dx_cells + Dyz * dy_cells + Dzz * dz_cells, z, axis=2)
+
+            if dict['system'] == 'reaction_diffusion':
+                react_term = dict['proliferation_rate'] * np.multiply(cells, (1 - cells / dict['cell_capacity']))
             elif dict['system'] == 'diffusion': 
                 react_term = 0
                 
@@ -70,7 +78,7 @@ class SolverPDE(Solver):
             
         return cells_list
     
-    def getDensity_xyz(self, timepoint, transform, domain_uvw, dict, deltat = 0.01):
+    def getDensity_xyz(self, dict, transform, domain_uvw, deltat = 0.01):
         
         # Find the minimum and maximum indices along each dimension
         min_indices = np.min(np.where(self.domain), axis=1)
@@ -91,10 +99,10 @@ class SolverPDE(Solver):
         cells_list = []
         cells = self.source.imageArray*dict['cell_capacity']
         iplot = 0
-        for t in np.linspace(0, timepoint[-1], num=int(timepoint[-1]/deltat), endpoint=True) :
+        for t in np.linspace(0, dict['timepoint'][-1], num=int(dict['timepoint'][-1]/deltat), endpoint=True) :
             
             # store metrics
-            if t >= timepoint[iplot]:
+            if t >= dict['timepoint'][iplot]:
                 
                 cells_codomain = np.zeros(transform.mapping.domain_shape) # initialize
                 cells_codomain[min_indices[0]:max_indices[0], min_indices[1]:max_indices[1], min_indices[2]:max_indices[2]] = cells
@@ -129,7 +137,7 @@ class SolverPDE(Solver):
             
         return cells_list    
 
-    def getDensity_uvw(self, timepoint, transform, dict, deltat = 0.01):
+    def getDensity_uvw(self, dict, transform, deltat = 0.01):
             
         # get Jacobian determinant and reduce image
         tmp = Image3D(imageArray=transform.getJacobianDeterminantDomain())
@@ -151,10 +159,10 @@ class SolverPDE(Solver):
         cells_list = []
         cells = self.source.imageArray*dict['cell_capacity']
         iplot = 0
-        for t in np.linspace(0, timepoint[-1], num=int(timepoint[-1]/deltat), endpoint=True) :
+        for t in np.linspace(0, dict['timepoint'][-1], num=int(dict['timepoint'][-1]/deltat), endpoint=True) :
             
             # store metrics
-            if t >= timepoint[iplot]: 
+            if t >= dict['timepoint'][iplot]:
                 
                 cells_list.append(cells)
                 iplot += 1

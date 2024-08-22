@@ -37,11 +37,12 @@ from opentps.core.data.images._image3D import Image3D
 
 # input 
 
-path_moving = '/home/gregory/Documents/Projects/CTV_RO1/Data/Atlas_Brain/DTI_FSL/MNI152_T1_1mm_brain_norm.nii.gz'
-path_tensor = '/home/gregory/Documents/Projects/CTV_RO1/Data/Atlas_Brain/DTI_FSL/FSL_HCP1065_tensor_1mm_Ants.nii.gz'
-path_segmentation = '/home/gregory/Documents/Projects/CTV_RO1/Data/Atlas_Brain/DTI_FSL/samseg_output/seg.mgz'
+path_moving = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/MNI152_T1_1mm_brain_norm.nii.gz'
+path_tensor = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/FSL_HCP1065_tensor_1mm_Ants.nii.gz'
+path_segmentation = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/samseg_output/seg.mgz'
+path_patients_dir = '/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152'
 
-PIDs = ['GLI_003_AAC']
+PIDs = ['GLI_003_AAC'] # ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
 
 # load data 
 
@@ -58,44 +59,44 @@ WM = np.logical_or(segment == 41, segment == 2)
 
 # Simulation parameters 
 
-timepoint = [0, 200]  # [days]
-
 model = {
     'obstacle': True,
     'cell_capacity': 100.,  # [%]
     'proliferation_rate': 0.01,  # [1/day],
     'diffusion_magnitude': 0.025,  # [mm^2/day]
     #'system': 'diffusion' # diffusion, reaction_diffusion
+    'timepoint': [0, 200]  # [days]
 }
 
 # scale tensor values in mask
-DT = tensor.getDiffusionTensorFKPP(brain_mask, diffusion_magnitude=model['diffusion_magnitude'])
+DT = tensor.getDiffusionTensorFKPP(model)
 # override values in white matter mask
 DT[WM] = 10 * DT[WM]
 tensor.imageArray = DT
+tensor.setBarrier(~brain_mask)
 
 for system in ['reaction_diffusion', 'diffusion']:
 
     model['system'] = system
 
     # initialize lists
-    dice_ICT = np.zeros((len(timepoint), len(PIDs)))
-    dice_FS = np.zeros((len(timepoint), len(PIDs)))
-    dice_PPD = np.zeros((len(timepoint), len(PIDs)))
-    MaxAE_ICT = np.zeros((len(timepoint), len(PIDs)))
-    MaxAE_FS = np.zeros((len(timepoint), len(PIDs)))
-    MaxAE_PPD = np.zeros((len(timepoint), len(PIDs)))
-    MAE_ICT = np.zeros((len(timepoint), len(PIDs)))
-    MAE_FS = np.zeros((len(timepoint), len(PIDs)))
-    MAE_PPD = np.zeros((len(timepoint), len(PIDs)))
-    HD95_ICT = np.zeros((len(timepoint), len(PIDs)))
-    HD95_FS = np.zeros((len(timepoint), len(PIDs)))
-    HD95_PPD = np.zeros((len(timepoint), len(PIDs)))
+    dice_ICT = np.zeros((len(model['timepoint']), len(PIDs)))
+    dice_FS = np.zeros((len(model['timepoint']), len(PIDs)))
+    dice_PPD = np.zeros((len(model['timepoint']), len(PIDs)))
+    MaxAE_ICT = np.zeros((len(model['timepoint']), len(PIDs)))
+    MaxAE_FS = np.zeros((len(model['timepoint']), len(PIDs)))
+    MaxAE_PPD = np.zeros((len(model['timepoint']), len(PIDs)))
+    MAE_ICT = np.zeros((len(model['timepoint']), len(PIDs)))
+    MAE_FS = np.zeros((len(model['timepoint']), len(PIDs)))
+    MAE_PPD = np.zeros((len(model['timepoint']), len(PIDs)))
+    HD95_ICT = np.zeros((len(model['timepoint']), len(PIDs)))
+    HD95_FS = np.zeros((len(model['timepoint']), len(PIDs)))
+    HD95_PPD = np.zeros((len(model['timepoint']), len(PIDs)))
     idp = 0
     for PID in PIDs:
 
-        path_static = f'/home/gregory/Documents/Projects/CTV_RO1/Data/MGH_Glioma/GLIS-RT/{PID}/MNI152/Brain_norm.nii.gz'
-        path_RTstructs = f'/home/gregory/Documents/Projects/CTV_RO1/Data/MGH_Glioma/GLIS-RT/{PID}/MNI152/'
+        path_static = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/MRI_CT/T1c_brain_norm.nii.gz')
+        path_RTstructs = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/Structures')
 
         # load data
 
@@ -104,10 +105,13 @@ for system in ['reaction_diffusion', 'diffusion']:
         # load structures
 
         RTs = Struct()
-        RTs.loadContours_folder(path_RTstructs, ['GTV', 'BS'])
+        RTs.loadContours_folder(path_RTstructs, ['GTV_T1c', 'BS_T1c', 'Brain'], contour_names=['GTV', 'BS', 'Brain_mask'])
         RTs.setMask('External', static > 0, voxel_size)
 
         GTV = RTs.getMaskByName('GTV').imageArray
+
+        BS = np.logical_or(~RTs.getMaskByName('Brain_mask').imageArray, RTs.getMaskByName('BS').imageArray)
+        RTs.setMask('BS', BS, voxel_size)
 
         # Perform registration
 
@@ -154,12 +158,10 @@ for system in ['reaction_diffusion', 'diffusion']:
 
         # [STAGE 4]
 
-        #metric = CCMetric(3) # Cross Correlation
-        #level_iters = [10, 10, 5]
         metric = SSDMetric(3, smooth=8)  # Sum of Squared Differences
         level_iters = [10, 10, 5]  # 100, 100, 25
 
-        sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)  #, inv_iter=100, inv_tol=1e-7)
+        sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)  # inv_iter=100, inv_tol=1e-7
         prealign = affine.affine
         mapping = sdr.optimize(static, moving, static_grid2world, moving_grid2world, prealign=prealign)
 
@@ -202,16 +204,16 @@ for system in ['reaction_diffusion', 'diffusion']:
         # solve FK equation in different coordinate spaces
 
         solver = SolverPDE(copy.deepcopy(coSource), copy.deepcopy(coBarriers), copy.deepcopy(tensor), coDomain)
-        cells = solver.getDensity_xyz(timepoint, transform, domain, model, deltat=deltat)
+        cells = solver.getDensity_xyz(model, transform, domain, deltat=deltat)
 
         solver_ICT = SolverPDE(copy.deepcopy(Source), copy.deepcopy(Barriers), copy.deepcopy(tensor_ICT), domain)
-        cells_ICT = solver_ICT.getDensity_uvw(timepoint, transform, model, deltat=deltat)
+        cells_ICT = solver_ICT.getDensity_uvw(model, transform, deltat=deltat)
 
         solver_FS = SolverPDE(copy.deepcopy(Source), copy.deepcopy(Barriers), copy.deepcopy(tensor_FS), domain)
-        cells_FS = solver_FS.getDensity_uvw(timepoint, transform, model, deltat=deltat)
+        cells_FS = solver_FS.getDensity_uvw(model, transform, deltat=deltat)
 
         solver_PPD = SolverPDE(copy.deepcopy(Source), copy.deepcopy(Barriers), copy.deepcopy(tensor_PPD), domain)
-        cells_PPD = solver_PPD.getDensity_uvw(timepoint, transform, model, deltat=deltat)
+        cells_PPD = solver_PPD.getDensity_uvw(model, transform, deltat=deltat)
 
         # Plot 2D
 
@@ -299,7 +301,7 @@ for system in ['reaction_diffusion', 'diffusion']:
 
         ax = axs[2]
 
-        #for i in range(1,len(timepoint)):
+        #for i in range(1,len(model['timepoint'])):
         ax.plot(X_plot[::3], cells[-1][::3, y, z], "o", color='black', markerfacecolor='none')
         ax.plot(X_plot, cells_ICT[-1][:, y, z], color='red')
         ax.plot(X_plot, cells_FS[-1][:, y, z], color='green')
@@ -342,7 +344,7 @@ for system in ['reaction_diffusion', 'diffusion']:
 
         # evaluate CTV against reference
 
-        for i in range(len(timepoint)):
+        for i in range(len(model['timepoint'])):
             ctv_ref = CTV(imageArray=cells[i] >= threshold, spacing=voxel_size)
 
             ctv_ICT = CTV(imageArray=cells_ICT[i] >= threshold, spacing=voxel_size)
@@ -380,7 +382,7 @@ for system in ['reaction_diffusion', 'diffusion']:
         idp += 1
 
         # save results
-    #np.save(os.path.join(os.getcwd(), 'timepoint_'+model['system']), timepoint)
+    #np.save(os.path.join(os.getcwd(), 'timepoint_'+model['system']), model['timepoint'])
     #np.save(os.path.join(os.getcwd(), 'dice_ICT_'+model['system']), dice_ICT)
     #np.save(os.path.join(os.getcwd(), 'dice_FS_'+model['system']), dice_FS)
     #np.save(os.path.join(os.getcwd(), 'dice_PPD_'+model['system']), dice_PPD)

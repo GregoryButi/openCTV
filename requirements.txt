@@ -27,7 +27,7 @@ msgpack==1.0.8
 munkres==1.1.4
 networkx @ file:///croot/networkx_1690561992265/work
 nibabel==5.2.1
-numpy==1.24.4
+numpy~=1.26.4
 olefile @ file:///home/conda/feedstock_root/build_artifacts/olefile_1701735466804/work
 opentps==1.0.1
 ordered-set==4.1.0
@@ -66,3 +66,6 @@ unicodedata2 @ file:///home/conda/feedstock_root/build_artifacts/unicodedata2_16
 urllib3==1.26.18
 vtk==9.2.6
 zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1695255097490/work
+
+scikit-image~=0.20.0
+matplotlib~=3.8.4

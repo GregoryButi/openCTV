@@ -7,13 +7,13 @@ Created on Wed Feb 15 08:54:32 2023
 """
 
 import numpy as np
-#import tensorflow as tf
 
 class TransformTensor(object):
     
     def __init__(self, mapping=None):
         self._mapping = mapping
-        self._jac = None
+        self._jacDomain = None
+        self._jacCodomain = None
     
     @property
     def mapping(self):
@@ -23,16 +23,54 @@ class TransformTensor(object):
     def mapping(self, mapping_obj):
         self._mapping = mapping_obj 
         # Reset cached properties when mapping changes
-        self._jac = None
+        self._jacDomain = None
+        self._jacCodomain = None
     
     @property
-    def jac(self):
-        return self._jac
+    def jacDomain(self):
+        return self._jacDomain
     
-    @jac.setter
-    def jac(self, array):
-        self._jac = array 
-    
+    @jacDomain.setter
+    def jacDomain(self, array):
+        self._jacDomain = array
+
+    @property
+    def jacCodomain(self):
+        return self._jacCodomain
+
+    @jacCodomain.setter
+    def jacCodomain(self, array):
+        self._jacCodomain = array
+
+    def _deformTensor(self, tensor):
+        xx = self.mapping.transform(tensor[:, :, :, 0, 0])
+        xy = self.mapping.transform(tensor[:, :, :, 0, 1])
+        xz = self.mapping.transform(tensor[:, :, :, 0, 2])
+        yy = self.mapping.transform(tensor[:, :, :, 1, 1])
+        yz = self.mapping.transform(tensor[:, :, :, 1, 2])
+        zz = self.mapping.transform(tensor[:, :, :, 2, 2])
+
+        tensorDeformed = np.transpose(np.array([[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]]), [2, 3, 4, 0, 1])
+
+        return tensorDeformed
+
+    def _getIndices_domain(self, mask):
+        if mask is None:
+            idX, idY, idZ = [idx.ravel() for idx in np.indices(self.mapping.domain_shape)]
+            return idX, idY, idZ
+        else:
+            idX, idY, idZ = np.nonzero(mask)
+            return idX, idY, idZ
+
+    def _getIndices_codomain(self, mask):
+        if mask is None:
+            idX, idY, idZ = [idx.ravel() for idx in np.indices(self.mapping.codomain_shape)]
+            return idX, idY, idZ
+        else:
+            mask_transformed = self.mapping.transform(mask)
+            idX, idY, idZ = np.nonzero(mask_transformed)
+            return idX, idY, idZ
+
     @staticmethod
     def transpose(array):
         return np.transpose(array, [0, 1, 2, 4, 3])

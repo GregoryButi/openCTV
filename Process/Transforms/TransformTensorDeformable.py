@@ -18,89 +18,84 @@ class TransformTensorDeformable(TransformTensor):
         super().__init__(mapping=mapping)
 
     @property
-    def jacDeformable(self):
-        if self.jac is None:
-            self.jac = self.invert(self._computeJacobian(self.mapping.get_simplified_transform().forward))
-        return self.jac
+    def jacobianDomain(self):
+        if self.jacDomain is None:
+            self.jacDomain = self._computeJacobian(self.mapping.get_simplified_transform().forward, direction='forward')
+        return self.jacDomain
 
-    def getTensorMetricTransformed(self, tensor, mask=[]):
+    @property
+    def jacobianCodomain(self):
+        if self.jacCodomain is None:
+            self.jacCodomain = self._computeJacobian(self.mapping.get_simplified_transform().backward, direction='backward')
+        return self.jacCodomain
 
-        if mask == []:
-            idX, idY, idZ = np.nonzero(np.ones(self.mapping.codomain_shape))
-        else:
-            idX, idY, idZ = np.nonzero(mask)
+    def getTensorMetricTransformed(self, tensor, mask=None):
 
-        # initialize
-        imageTensor = np.zeros(tensor.gridSize)
+        imageTensor = np.zeros(tuple(self.mapping.domain_shape) + (3, 3))  # initialize
+        idX, idY, idZ = self._getIndices_domain(mask)
 
         # transform tensor
-        imageTensor[idX, idY, idZ, ...] = np.matmul(
-            np.matmul(self.transpose(self.jacDeformable)[idX, idY, idZ, ...], tensor.imageArray[idX, idY, idZ, ...]),
-            self.jacDeformable[idX, idY, idZ, ...])
+        imageTensor[idX, idY, idZ, ...] = np.matmul(np.matmul(self.transpose(self.jacobianDomain)[idX, idY, idZ, ...], tensor.imageArray[idX, idY, idZ, ...]), self.jacobianDomain[idX, idY, idZ, ...])
 
         # interpolate
-        imageTensor = self.deformTensor(imageTensor, self.mapping, out_shape=self.mapping.domain_shape)
+        imageTensor = self._deformTensor(imageTensor)
 
         return TensorMetric(imageArray=imageTensor)
 
-    def getTensorDiffusionTransformed(self, tensor, method='ICT', mask=[]):
+    def getTensorDiffusionTransformed(self, tensor, method='ICT', mask=None):
 
-        if mask == []:
-            idX, idY, idZ = np.nonzero(np.ones(self.mapping.codomain_shape))
-        else:
-            idX, idY, idZ = np.nonzero(mask)
+        if method == 'ICT':  # invariance under coordinate transform
 
-        imageTensor = np.zeros(tensor.gridSize)  # initialize
-        if method == 'ICT':
+            imageTensor = np.zeros(tuple(self.mapping.domain_shape) + (3, 3))  # initialize
+            idX, idY, idZ = self._getIndices_domain(mask)
 
             # transform tensor
-            imageTensor[idX, idY, idZ, ...] = np.matmul(
-                np.matmul(self.invert(self.jacDeformable)[idX, idY, idZ, ...], tensor.imageArray[idX, idY, idZ, ...]),
-                self.transpose(self.invert(self.jacDeformable))[idX, idY, idZ, ...])
+            imageTensor[idX, idY, idZ, ...] = np.matmul(np.matmul(self.invert(self.jacobianDomain)[idX, idY, idZ, ...], tensor.imageArray[idX, idY, idZ, ...]), self.transpose(self.invert(self.jacobianDomain))[idX, idY, idZ, ...])
 
             # interpolate
-            imageTensor = self.deformTensor(imageTensor, self.mapping, out_shape=self.mapping.domain_shape)
+            imageTensor = self._deformTensor(imageTensor)
 
         elif method == 'PPD':
 
-            tensorDomain = Tensor(
-                imageArray=self.deformTensor(tensor.imageArray, self.mapping, out_shape=self.mapping.domain_shape))
+            imageTensor = np.zeros(tuple(self.mapping.codomain_shape) + (3, 3))
+            idX, idY, idZ = self._getIndices_codomain(mask)
 
-            jacInv = self.invert(self.jacDeformable)
+            tensorCodomain = Tensor(imageArray=self._deformTensor(tensor.imageArray))
+
+            jacInv = self.invert(self.jacobianCodomain)
             for i in range(len(idX)):
-                jac_voxel = jacInv[idX[i], idY[i], idZ[i], :, :]
-                e1 = tensorDomain.evecs[idX[i], idY[i], idZ[i], :, 0]
-                e2 = tensorDomain.evecs[idX[i], idY[i], idZ[i], :, 1]
+                jacInv_voxel = jacInv[idX[i], idY[i], idZ[i], :, :]
+                e1 = tensorCodomain.evecs[idX[i], idY[i], idZ[i], :, 0]
+                e2 = tensorCodomain.evecs[idX[i], idY[i], idZ[i], :, 1]
 
-                R = self.rotation_component_affine(jac_voxel, e1, e2)
+                R = self.rotation_component_affine(jacInv_voxel, e1, e2)
 
                 # reorient tensor: (R^-1)^T * tensor * R^-1
-                imageTensor[idX[i], idY[i], idZ[i], :, :] = np.dot(
-                    np.dot(R, tensorDomain.imageArray[idX[i], idY[i], idZ[i], :, :]), R.T)
+                imageTensor[idX[i], idY[i], idZ[i], :, :] = np.dot(np.dot(R, tensorCodomain.imageArray[idX[i], idY[i], idZ[i], :, :]), R.T)
 
         elif method == 'FS':
 
-            imageTensorDomain = self.deformTensor(tensor.imageArray, self.mapping, out_shape=self.mapping.domain_shape)
+            imageTensor = np.zeros(tuple(self.mapping.codomain_shape) + (3, 3))
+            idX, idY, idZ = self._getIndices_codomain(mask)
+
+            imageTensorCodomain = self._deformTensor(tensor.imageArray)
 
             # extract rotation matrix
-            R = self.rigid_rotation_component_ndarray(self.invert(self.jacDeformable),
-                                                      self.transpose(self.invert(self.jacDeformable)))
+            R = self._rigid_rotation_component_ndarray(self.invert(self.jacobianCodomain), self.transpose(self.invert(self.jacobianCodomain)))
             R_T = np.transpose(R, [0, 1, 2, 4, 3])
 
-            imageTensor[idX, idY, idZ, ...] = np.matmul(
-                np.matmul(R[idX, idY, idZ, ...], imageTensorDomain[idX, idY, idZ, ...]), R_T[idX, idY, idZ, ...])
+            imageTensor[idX, idY, idZ, ...] = np.matmul(np.matmul(R[idX, idY, idZ, ...], imageTensorCodomain[idX, idY, idZ, ...]), R_T[idX, idY, idZ, ...])
 
         return TensorDiffusion(imageArray=imageTensor)
 
-    def getJacobianDeterminantDomain(self):
+    def getJacobianDeterminantCodomain(self):
 
-        # compute Jacobian determinant in the domain grid
-        jacDetDomain = self.compute_determinant(self._computeJacobian(self.mapping.get_simplified_transform().backward))
-        print('Statistics Jacobian determinant: ' + str(jacDetDomain.mean()) + ' +/- ' + str(jacDetDomain.std()))
-        return jacDetDomain
+        # compute Jacobian determinant in the codomain grid
+        jacDetCodomain = self.compute_determinant(self.jacobianCodomain)
+        print('Statistics Jacobian determinant: ' + str(jacDetCodomain.mean()) + ' +/- ' + str(jacDetCodomain.std()))
+        return jacDetCodomain
 
-    @staticmethod
-    def _computeJacobian(dvf):
+    def _computeJacobian(self, dvf, direction):
 
         # compute Jacobian (partial derivative of vector field)
 
@@ -112,35 +107,20 @@ class TransformTensorDeformable(TransformTensor):
         Dy_dx, Dy_dy, Dy_dz = np.gradient(Dy, edge_order=2)
         Dz_dx, Dz_dy, Dz_dz = np.gradient(Dz, edge_order=2)
 
-        Jac_inv = np.array([[1 + Dx_dx, Dx_dy, Dx_dz],
+        derivatives = np.array([[1 + Dx_dx, Dx_dy, Dx_dz],
                             [Dy_dx, 1 + Dy_dy, Dy_dz],
                             [Dz_dx, Dz_dy, 1 + Dz_dz]
                             ])
-        Jac_inv = np.transpose(Jac_inv, [2, 3, 4, 0, 1])
+        derivatives = np.transpose(derivatives, [2, 3, 4, 0, 1])
 
-        return Jac_inv
+        if direction == 'forward':
+            return self.invert(derivatives)
+        elif direction == 'backward':
+            return derivatives
 
     @staticmethod
-    def rigid_rotation_component_ndarray(A, A_T):
+    def _rigid_rotation_component_ndarray(A, A_T):
         return np.matmul(fractional_power(np.matmul(A, A_T), -1 / 2), A)
-
-    @staticmethod
-    def deformTensor(tensor, mapping, out_shape=None):
-
-        xx = mapping.transform(tensor[:, :, :, 0, 0], out_shape=out_shape)
-        xy = mapping.transform(tensor[:, :, :, 0, 1], out_shape=out_shape)
-        xz = mapping.transform(tensor[:, :, :, 0, 2], out_shape=out_shape)
-        yy = mapping.transform(tensor[:, :, :, 1, 1], out_shape=out_shape)
-        yz = mapping.transform(tensor[:, :, :, 1, 2], out_shape=out_shape)
-        zz = mapping.transform(tensor[:, :, :, 2, 2], out_shape=out_shape)
-
-        tensorDeformed = np.array([[xx, xy, xz],
-                                   [xy, yy, yz],
-                                   [xz, yz, zz]])
-        tensorDeformed = np.transpose(tensorDeformed, [2, 3, 4, 0, 1])
-
-        return tensorDeformed
-
 
 def fractional_power(A, alpha):
     """
