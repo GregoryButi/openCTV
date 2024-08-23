@@ -28,13 +28,13 @@ path_tensor = '../../Input/Kim/Therapy-scan/fMRI/Tensor.nii.gz'
 MRI, grid2world, voxel_size = load_nifti(path_MRI, return_voxsize=True)
 
 tensor = TensorDiffusion()
-tensor.loadTensor(path_tensor)
+tensor.loadTensor(path_tensor, format='MRItrix3')
 
 # load structures
 
 RTs = Struct()
-RTs.loadContours_folder(path_RTstructs, ['Brain', 'ExternalT1'])
-#RTs.loadContours_folder(path_RTstructs, ['Brain', 'WM', 'ExternalT1'])
+RTs.loadContours_folder(path_RTstructs, ['Brain', 'External'])
+#RTs.loadContours_folder(path_RTstructs, ['Brain', 'WM', 'External'])
 
 # define barrier structures
 RTs.setMask('BS', ~RTs.getMaskByName('Brain').imageArray, voxel_size)
@@ -50,7 +50,7 @@ RTs.createSphere('GTV', X_world, Y_world, Z_world, Brain.centerOfMass + np.array
 
 # reduce calculation  of images and structures
 
-External = RTs.getMaskByName('ExternalT1').imageArray
+External = RTs.getMaskByName('External').imageArray
 MRI = Image3D(imageArray=MRI, spacing=voxel_size)
 
 MRI.reduceGrid_mask(External)
@@ -60,7 +60,7 @@ tensor.reduceGrid_mask(External)
 # reload contour masks
 
 GTV = RTs.getMaskByName('GTV').imageArray
-External = RTs.getMaskByName('ExternalT1').imageArray
+External = RTs.getMaskByName('External').imageArray
 Brain = RTs.getMaskByName('Brain').imageArray
 BS = RTs.getMaskByName('BS').imageArray
 #WM = RTs.getMaskByName('WM').imageArray

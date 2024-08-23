@@ -6,6 +6,7 @@ Created on Wed Mar  2 15:04:17 2022
 @author: gregory
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass as com
@@ -18,14 +19,15 @@ from Process.CTVs import CTVGeometric
 from Process import Struct
 from Analysis.contourComparison import dice_score, percentile_hausdorff_distance, jaccard_index, hausdorff_distance, mean_hausdorff_distance
 
+#input
+path_patients_dir = '/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152'
+
 # output
 path_folder_output = '/home/gregory/Documents/Projects/CTV_RO1/Results/Glioma'
 
 # Patient IDs
-#PIDs = ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
-#Margins = [20, 20, 20, 20, 10, 20, 20, 20, 10, 10]
-PIDs = ['GLI_003_AAC']  # GLI_003_AAC
-Margins = [20]
+PIDs = ['GLI_003_AAC']  # ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
+Margins = [20]  # [20, 20, 20, 20, 10, 20, 20, 20, 10, 10]
 
 # parameter space
 
@@ -44,11 +46,9 @@ modelDTI = {
 
 for PID, margin in zip(PIDs, Margins):
 
-    # input
-
-    path_MRI = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/Therapy-scan/MRI_CT/T1c_norm.nii.gz'
-    path_RTstructs = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/Therapy-scan/Structures'
-    path_tensor = f'/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152/{PID}/MT_warped.nii.gz'
+    path_MRI = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/MRI_CT/T1c_norm.nii.gz')
+    path_RTstructs = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/Structures')
+    path_tensor = os.path.join(path_patients_dir, f'{PID}/MT_warped.nii.gz')
     
     # load data
     
@@ -130,7 +130,7 @@ for PID, margin in zip(PIDs, Margins):
             # Run fast marching method
             
             ctv_dti = CTVGeometric()
-            ctv_dti.setCTV_volume(volume, RTs, tensor=copy.deepcopy(tensor), model = modelDTI, x0 = margin)
+            ctv_dti.setCTV_volume(volume, RTs, tensor=copy.deepcopy(tensor), model=modelDTI, x0=margin)
             ctv_dti.smoothMask(BS)
             
             # store mask in array

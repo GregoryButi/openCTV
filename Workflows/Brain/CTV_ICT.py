@@ -35,11 +35,11 @@ from Analysis.contourComparison import dice_score, percentile_hausdorff_distance
 
 from opentps.core.data.images._image3D import Image3D
 
-# input 
+# input
 
-path_moving = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/MNI152_T1_1mm_brain_norm.nii.gz'
-path_tensor = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/FSL_HCP1065_tensor_1mm_Ants.nii.gz'
-path_segmentation = '/media/gregory/Elements/Data/Atlas_Brain/DTI_FSL/samseg_output/seg.mgz'
+path_moving = '../../Input/Atlas/MNI152_T1_1mm_brain_norm.nii.gz'
+path_tensor = '../../Input/Atlas/FSL_HCP1065_tensor_1mm_Ants.nii.gz'
+path_segmentation = '../../Input/Atlas/seg.mgz'
 path_patients_dir = '/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152'
 
 PIDs = ['GLI_003_AAC'] # ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']

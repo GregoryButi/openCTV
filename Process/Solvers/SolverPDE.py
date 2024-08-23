@@ -140,7 +140,7 @@ class SolverPDE(Solver):
     def getDensity_uvw(self, dict, transform, deltat = 0.01):
             
         # get Jacobian determinant and reduce image
-        tmp = Image3D(imageArray=transform.getJacobianDeterminantDomain())
+        tmp = Image3D(imageArray=transform.getJacobianDeterminantCodomain()) # check this!
         tmp.reduceGrid_mask(self.domain)
         jac_det_domain = tmp.imageArray
                 

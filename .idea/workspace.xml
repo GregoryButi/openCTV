@@ -6,14 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="d4302fcc-6f2a-45d9-92ec-e7ce931de9f4" name="Changes" comment="update">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Atlas/FSL_HCP1065_tensor_1mm_Ants.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Atlas/MNI152_T1_1mm_brain_norm.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Kim/Therapy-scan/MRI_CT/T1_norm.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Kim/Therapy-scan/Structures/Brain.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Kim/Therapy-scan/Structures/ExternalT1.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Kim/Therapy-scan/Structures/WM.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Input/Kim/Therapy-scan/fMRI/Tensor.nii.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Process/Solvers/SolverPDE.py" beforeDir="false" afterPath="$PROJECT_DIR$/Process/Solvers/SolverPDE.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Workflows/Brain/CTV_ICT.py" beforeDir="false" afterPath="$PROJECT_DIR$/Workflows/Brain/CTV_ICT.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Workflows/Brain/CTV_from_DTI.py" beforeDir="false" afterPath="$PROJECT_DIR$/Workflows/Brain/CTV_from_DTI.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Workflows/Brain/CTV_from_atlas_GLISRT.py" beforeDir="false" afterPath="$PROJECT_DIR$/Workflows/Brain/CTV_from_atlas_GLISRT.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,34 +52,34 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.CTVDiffusion.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.CTV_ICT.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CTV_from_DTI.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CTV_from_atlas_GLISRT.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CTV_from_atlas_slider.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CTV_sensitivity.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_ICT.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_brain.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_from_DTI.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.Main_CTV_from_atlas.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_from_atlas_GLISRT.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_from_atlas_slider.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_poisson.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_sensitivity.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_slider.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Main_CTV_texture.executor&quot;: &quot;Run&quot;,
-    &quot;Python.RTstructs.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Recurrence_distance_atlas.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/gregory/Documents/Projects/CTV_RO1/Python/openCTV/Workflows/Brain&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.CTVDiffusion.executor": "Debug",
+    "Python.CTV_ICT.executor": "Run",
+    "Python.CTV_from_DTI.executor": "Debug",
+    "Python.CTV_from_atlas_GLISRT.executor": "Run",
+    "Python.CTV_from_atlas_slider.executor": "Run",
+    "Python.CTV_sensitivity.executor": "Run",
+    "Python.Main.executor": "Run",
+    "Python.Main_CTV.executor": "Run",
+    "Python.Main_CTV_ICT.executor": "Run",
+    "Python.Main_CTV_brain.executor": "Run",
+    "Python.Main_CTV_from_DTI.executor": "Debug",
+    "Python.Main_CTV_from_atlas.executor": "Run",
+    "Python.Main_CTV_from_atlas_GLISRT.executor": "Run",
+    "Python.Main_CTV_from_atlas_slider.executor": "Run",
+    "Python.Main_CTV_poisson.executor": "Run",
+    "Python.Main_CTV_sensitivity.executor": "Run",
+    "Python.Main_CTV_slider.executor": "Run",
+    "Python.Main_CTV_texture.executor": "Run",
+    "Python.RTstructs.executor": "Run",
+    "Python.Recurrence_distance_atlas.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "/home/gregory/Documents/Projects/CTV_RO1/Python/openCTV/Workflows/Brain",
+    "settings.editor.selected.configurable": "preferences.lookFeel"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/Workflows/Brain" />
@@ -179,7 +175,15 @@
       <option name="project" value="LOCAL" />
       <updated>1724332231966</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="update">
+      <option name="closed" value="true" />
+      <created>1724333605798</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1724333605798</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -259,6 +263,21 @@
           <url>file://$PROJECT_DIR$/Workflows/Muscle/Main_CTV_poisson.py</url>
           <line>214</line>
           <option name="timeStamp" value="48" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Process/Tensors/TensorDiffusion.py</url>
+          <line>19</line>
+          <option name="timeStamp" value="49" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Process/Tensors/Tensor.py</url>
+          <line>120</line>
+          <option name="timeStamp" value="50" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Workflows/Brain/CTV_from_DTI.py</url>
+          <line>34</line>
+          <option name="timeStamp" value="51" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
