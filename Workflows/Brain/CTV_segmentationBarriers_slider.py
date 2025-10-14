@@ -18,7 +18,7 @@ from opentps.core.data.images._image3D import Image3D
 from Process.CTVs import CTVGeometric
 from Process import Struct
 from Process.Analysis.contourComparison import dice_score, percentile_hausdorff_distance, surface_dice_score
-from Process.ImageSegmentation_nnUNet.imageSegmantation import run_segmentation
+from Process.ImageSegmentation_nnUNet.imageSegmentation import run_segmentation
 
 visualization = True
 postprocessing_barriers = True
