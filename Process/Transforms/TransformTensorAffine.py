@@ -9,9 +9,7 @@ Created on Fri Mar  8 14:35:48 2024
 import numpy as np
 import scipy
 
-from Process.Tensors import Tensor
-from Process.Tensors import TensorMetric
-from Process.Tensors import TensorDiffusion
+from Process.Tensors import Tensor, TensorMetric, TensorDiffusion
 from Process.Transforms import TransformTensor
 
 class TransformTensorAffine(TransformTensor):

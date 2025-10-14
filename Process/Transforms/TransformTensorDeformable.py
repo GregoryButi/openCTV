@@ -8,9 +8,7 @@ Created on Fri Mar  8 14:36:03 2024
 
 import numpy as np
 
-from Process.Tensors import Tensor
-from Process.Tensors import TensorMetric
-from Process.Tensors import TensorDiffusion
+from Process.Tensors import Tensor, TensorMetric, TensorDiffusion
 from Process.Transforms import TransformTensor
 
 class TransformTensorDeformable(TransformTensor):
@@ -55,7 +53,7 @@ class TransformTensorDeformable(TransformTensor):
             # interpolate
             imageTensor = self._deformTensor(imageTensor)
 
-        elif method == 'PPD':
+        elif method == 'PPD': # preservation of principle direction
 
             imageTensor = np.zeros(tuple(self.mapping.codomain_shape) + (3, 3))
             idX, idY, idZ = self._getIndices_codomain(mask)
@@ -73,7 +71,7 @@ class TransformTensorDeformable(TransformTensor):
                 # reorient tensor: (R^-1)^T * tensor * R^-1
                 imageTensor[idX[i], idY[i], idZ[i], :, :] = np.dot(np.dot(R, tensorCodomain.imageArray[idX[i], idY[i], idZ[i], :, :]), R.T)
 
-        elif method == 'FS':
+        elif method == 'FS': # finite strain
 
             imageTensor = np.zeros(tuple(self.mapping.codomain_shape) + (3, 3))
             idX, idY, idZ = self._getIndices_codomain(mask)

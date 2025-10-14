@@ -14,10 +14,9 @@ from dipy.io.image import load_nifti
 import copy
 
 from opentps.core.data.images._image3D import Image3D
-from Process.Tensors import TensorMetric
-from Process.CTVs import CTVGeometric
+from Process import TensorMetric
+from Process import CTVGeometric
 from Process import Struct
-from Analysis.contourComparison import dice_score, percentile_hausdorff_distance, jaccard_index, hausdorff_distance, mean_hausdorff_distance
 
 #input
 path_patients_dir = '/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152'
@@ -26,12 +25,12 @@ path_patients_dir = '/media/gregory/Elements/Data/MGH_Glioma/Processed_MNI152'
 path_folder_output = '/home/gregory/Documents/Projects/CTV_RO1/Results/Glioma'
 
 # Patient IDs
-PIDs = ['GLI_003_AAC']  # ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
-Margins = [20]  # [20, 20, 20, 20, 10, 20, 20, 20, 10, 10]
+PIDs = ['GLI_001_GBM', 'GLI_003_AAC', 'GLI_004_GBM', 'GLI_005_GBM', 'GLI_006_ODG', 'GLI_008_GBM', 'GLI_009_GBM', 'GLI_017_AAC', 'GLI_044_AC', 'GLI_046_AC']
+Margins = [20, 20, 20, 20, 10, 20, 20, 20, 10, 10]
 
 # parameter space
 
-resistance = [0.5, 0.1, 0.05]
+resistance = [0.1]
 anisotropy = [1.]
 
 # define model
@@ -46,7 +45,7 @@ modelDTI = {
 
 for PID, margin in zip(PIDs, Margins):
 
-    path_MRI = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/MRI_CT/T1c_norm.nii.gz')
+    path_MRI = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/MRI_CT/T1c_brain.nii.gz')
     path_RTstructs = os.path.join(path_patients_dir, f'{PID}/Therapy-scan/Structures')
     path_tensor = os.path.join(path_patients_dir, f'{PID}/MT_warped.nii.gz')
     
@@ -56,17 +55,24 @@ for PID, margin in zip(PIDs, Margins):
     
     tensor = TensorMetric()
     tensor.loadTensor(path_tensor)
-    
+
+    _, _, RGB = tensor.get_FA_MD_RGB()
+
     # load structures
     
     RTs = Struct()
     RTs.loadContours_folder(path_RTstructs, ['GTV_T1c', 'CTV_T1c', 'BS_T1c', 'CC_T1c', 'Brain', 'WM', 'GM', 'External_T1c'],
                             contour_names=['GTV', 'CTV', 'BS', 'CC', 'Brain_mask', 'WM', 'GM', 'External'])
-    
+
+    # override brain mask
+    RTs.setMask('Brain_mask', MRI>0)
+
     RTs.smoothMasks(['GTV', 'CTV', 'CC', 'Brain_mask', 'External'])
     
-    print('GTV volume: '+str(RTs.getMaskByName('GTV').imageArray.sum()*np.prod(RTs.getMaskByName('GTV').spacing)/1000)+' cc') 
-    
+    print('GTV volume: '+str(RTs.getMaskByName('GTV').imageArray.sum()*np.prod(RTs.getMaskByName('GTV').spacing)/1000)+' cc')
+    print('Brain_mask volume: ' + str(
+        RTs.getMaskByName('Brain_mask').imageArray.sum() * np.prod(RTs.getMaskByName('Brain_mask').spacing) / 1000) + ' cc')
+
     BS = np.logical_or(~RTs.getMaskByName('Brain_mask').imageArray, RTs.getMaskByName('BS').imageArray)
     RTs.setMask('BS', BS, voxel_size)
     
@@ -132,12 +138,12 @@ for PID, margin in zip(PIDs, Margins):
             ctv_dti = CTVGeometric()
             ctv_dti.setCTV_volume(volume, RTs, tensor=copy.deepcopy(tensor), model=modelDTI, x0=margin)
             ctv_dti.smoothMask(BS)
-            
+
             # store mask in array
             CTVs_dti[:, :, :, j, k] = ctv_dti.imageArray
-        
+
             # evaluate CTV against reference
-            
+
             # exclude GTV from volume overlap analysis
             # eval_metrics[k][j]['DSC'] = dice_score(np.logical_and(ctv_classic.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
             # eval_metrics_wmgm[k][j]['DSC'] = dice_score(np.logical_and(ctv_wmgm.imageArray,~GTV), np.logical_and(ctv_dti.imageArray,~GTV))
@@ -156,20 +162,20 @@ for PID, margin in zip(PIDs, Margins):
             #
             # eval_metrics[k][j]['HDmean'] = mean_hausdorff_distance(ctv_classic.getMeshpoints(), ctv_dti.getMeshpoints())
             # eval_metrics_wmgm[k][j]['HDmean'] = mean_hausdorff_distance(ctv_wmgm.getMeshpoints(), ctv_dti.getMeshpoints())
-        
+
     # save results
-    
+
     # with open(os.path.join(os.path.join(path_folder_output,modelDTI['model-DTI']),'eval_metrics_'+PID+'.txt'), 'wb') as f:
-    #     pickle.dump(eval_metrics,f) 
-        
+    #     pickle.dump(eval_metrics,f)
+
     # with open(os.path.join(os.path.join(path_folder_output,modelDTI['model-DTI']),'eval_metrics_wmgm_'+PID+'.txt'), 'wb') as f:
-    #     pickle.dump(eval_metrics_wmgm,f)  
-    
+    #     pickle.dump(eval_metrics_wmgm,f)
+
     # with open(os.path.join(os.path.join(path_folder_output,modelDTI['model-DTI']),'resistance_'+PID+'.txt'), 'wb') as f:
-    #     pickle.dump(resistance,f)     
-    
+    #     pickle.dump(resistance,f)
+
     # with open(os.path.join(os.path.join(path_folder_output,modelDTI['model-DTI']),'params_'+PID+'.txt'), 'wb') as f:
-    #     pickle.dump(anisotropy,f)     
+    #     pickle.dump(anisotropy,f)
     
 # Create 2D plots
 
@@ -193,7 +199,7 @@ fig.subplots_adjust(wspace=0.01)
 
 i = 0
 for j in range(len(resistance)):
-    axes[i].imshow(np.flip(plotMR[:, :, Z_coord].transpose(), axis=0), cmap='gray', vmin=0, vmax=2.5)
+    axes[i].imshow(np.flip(plotMR[:, :, Z_coord].transpose(), axis=0), cmap='gray')
     axes[i].contourf(np.flip(plotGTV[:, :, Z_coord].transpose(), axis=0), colors='yellow', alpha=0.4)
     axes[i].contourf(np.flip(plotCC[:, :, Z_coord].transpose(), axis=0), colors='blue', alpha=0.4)
     #axes[i].contour(np.flip(BS[:, :, Z_coord].transpose(), axis=0), colors='yellow', linewidths=1)

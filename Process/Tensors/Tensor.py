@@ -21,6 +21,7 @@ class Tensor(Image3D):
     self._eig_decomp_done = False
     self._evals = None
     self._evecs = None
+    self._affine = None
     
   @property
   def eig_decomp_done(self):
@@ -56,11 +57,19 @@ class Tensor(Image3D):
   
   @evecs.setter
   def evecs(self, array):
-      self._evecs = array  
+      self._evecs = array
+
+  @property
+  def affine(self):
+      return self._affine
+
+  @affine.setter
+  def affine(self, array):
+      self._affine = array
 
   def loadTensor(self, file_path, format=None):
-    
-    # load data  
+
+    # load data
     imageTensor, affine, spacing = load_nifti(file_path, return_voxsize=True)
 
     if format == 'ANTs':
@@ -107,11 +116,12 @@ class Tensor(Image3D):
                           [image_xy, image_yy, image_yz],
                           [image_xz, image_yz, image_zz]])
         imageTensor = np.transpose(imageTensor, [2, 3, 4, 0, 1])
-    
+
     # set attributes
     self.imageArray = imageTensor
     self.spacing = spacing
     self.origin = affine[:3, 3]
+    self.affine = affine
 
 
   def _eig_decomp(self):
@@ -157,7 +167,7 @@ class Tensor(Image3D):
 
       image00, _ = reslice(self.imageArray[..., 0, 0], affine, self.spacing, new_spacing)
 
-      imageTensor = initializeTensorImage(image00.shape+(3, 3))
+      imageTensor = self.initializeTensorImage(image00.shape+(3, 3))
       for i in [0, 1, 2]:
           for j in [0, 1, 2]:
               imageTensor[..., i, j], _ = reslice(self.imageArray[..., i, j], affine, self.spacing, new_spacing)
@@ -172,41 +182,71 @@ class Tensor(Image3D):
       imageTensor = initializeTensorImage(self.gridSize)
       for i in [0, 1, 2]:
           for j in [0, 1, 2]:
-              imageTensor[..., i, j] = gaussian_filter(self.imageArray[..., i, j], sigma=1)
+              imageTensor[..., i, j] = gaussian_filter(self.imageArray[..., i, j], sigma=sigma)
       
       # update attributes      
       self.imageArray = imageTensor        
 
   def reduceGrid_mask(self, mask):  
       super().reduceGrid_mask(mask)
+
       # update attributes 
       self.eig_decomp_done = False
+      # TODO: update affine
+      # self.affine =
+
+  def isPositiveDefinite(self, mask=None):
+      """
+      Check positive definiteness for a field of 3x3 matrices.
+
+      Returns
+      -------
+      mask : np.ndarray
+          Boolean array of shape (N, M, L), True if the corresponding 3x3 matrix is positive definite.
+      """
+
+      result = np.zeros(self.gridSize[:-2], dtype=bool)
+
+      idX, idY, idZ = np.where(mask)
+      for i in idX:
+          for j in idY:
+              for k in idZ:
+                  if mask is not None and not mask[i, j, k]:
+                      continue
+                  try:
+                      np.linalg.cholesky(self.imageArray[i, j, k])
+                      result[i, j, k] = True
+                  except np.linalg.LinAlgError:
+                      result[i, j, k] = False
+
+      return result
 
   @staticmethod
   def reconstruct_tensor(evecs, evals):
-    Lambda = initializeTensorImage(evecs.shape)
+    Lambda = Tensor.initializeTensorImage(evecs.shape)
     Lambda[..., 0, 0] = evals[..., 0]
     Lambda[..., 1, 1] = evals[..., 1]
     Lambda[..., 2, 2] = evals[..., 2]
-    
+
     return np.matmul(evecs, np.matmul(Lambda, np.linalg.inv(evecs)))
-  
+
   @staticmethod
   def reconstruct_tensor_mask(evecs, evals, idX, idY, idZ):
-    Lambda = initializeTensorImage(evecs.shape)
-    Lambda[idX, idY, idZ, 0, 0] = evals[..., 0]
-    Lambda[idX, idY, idZ, 1, 1] = evals[..., 1]
-    Lambda[idX, idY, idZ, 2, 2] = evals[..., 2]
-    
+    Lambda = Tensor.initializeTensorImage(evecs.shape)
+    Lambda[idX, idY, idZ, 0, 0] = evals[idX, idY, idZ, 0]
+    Lambda[idX, idY, idZ, 1, 1] = evals[idX, idY, idZ, 1]
+    Lambda[idX, idY, idZ, 2, 2] = evals[idX, idY, idZ, 2]
+
     return np.matmul(evecs, np.matmul(Lambda, np.linalg.inv(evecs)))
 
-def initializeTensorImage(shape):
+  @staticmethod
+  def initializeTensorImage(shape):
 
-  # initialize metric tensor as identity matrix
-  tensor = np.zeros(shape)
-  tensor[..., 0:3, 0:3] = np.eye(3)
+    # initialize metric tensor as identity matrix
+    tensor = np.zeros(shape)
+    tensor[..., 0:3, 0:3] = np.eye(3)
 
-  return tensor
+    return tensor
 
 def correctInvertibility(matrix, eps = 1e-9):
 
@@ -234,13 +274,6 @@ def correctLowerBound(matrix, lower_bound = 1e-9):
   mask = matrix < lower_bound
   matrix[mask] = lower_bound
   return matrix
-
-# def isPositiveDefinite(K):
-#   if np.isnan(tf.linalg.cholesky(K)).any():  
-#       print('Matrix is not positive definite')        
-#       return False 
-#   else: 
-#       return True 
 
 # def correctPositiveDefiniteness(evals, eps = 1e-9):   
 #   if (evals < 0).any(): 

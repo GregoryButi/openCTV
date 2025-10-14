@@ -7,8 +7,8 @@ Created on Mon Mar 11 15:50:48 2024
 """
 
 import numpy as np
-from Process.Tensors import Tensor
 
+from Process.Tensors import Tensor
 
 class TensorDiffusion(Tensor):
     def __init__(self, imageArray=None, origin=(0, 0, 0), spacing=(1, 1, 1)):
@@ -31,6 +31,6 @@ class TensorDiffusion(Tensor):
         self.imageArray[mask] = np.eye(3) * eps
 
     def getMetricTensor(self):
-        from Process.Tensors.TensorMetric import TensorMetric
+        from Process.Tensors import TensorMetric
         mt = TensorMetric(imageArray=self.getInverse(), origin=self.origin, spacing=self.spacing)
         return mt

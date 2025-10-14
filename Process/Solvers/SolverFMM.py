@@ -10,20 +10,25 @@ import numpy as np
 from agd import Eikonal
 from agd.Metrics import Riemann
 
+from opentps.core.data.images._image3D import Image3D
+
 from Process.Solvers import Solver
 from Process.Tensors import TensorMetric
 
 class SolverFMM(Solver):
-    def __init__(self, source=None, barriers=None, tensor=None, domain=None):
+    def __init__(self, source=None, boundary=None, tensor=None, domain=None):
       
       if tensor is None:
           MT = np.zeros(tuple(source.gridSize) + (3, 3))
           MT[..., 0:3, 0:3] = np.eye(3)          
           tensor = TensorMetric(imageArray=MT, spacing=source.spacing, origin=source.origin)
-    
-      super().__init__(source=source, barriers=barriers, tensor=tensor, domain=domain)
 
-    def getDistance(self, dict):
+      if boundary is None:
+          boundary = Image3D(imageArray=np.zeros(source.gridSize).astype(bool), spacing=source.spacing, origin=source.origin)
+
+      super().__init__(source=source, boundary=boundary, tensor=tensor, domain=domain)
+
+    def getDistance(self, roi=None):
 
         # Define target / seeds
     
@@ -31,6 +36,7 @@ class SolverFMM(Solver):
     
         hfmIn = Eikonal.dictIn({
             'model': 'Riemann3',  # Three-dimensional Riemannian eikonal equation
+            # 'mode': 'gpu'
         })
     
         # Define calculation grid in world space
@@ -41,12 +47,13 @@ class SolverFMM(Solver):
         hfmIn.SetRect(sides=[[xvec_world[0], xvec_world[-1] + self.source.spacing[0]], [yvec_world[0], yvec_world[-1] +
                       self.source.spacing[1]], [zvec_world[0], zvec_world[-1] + self.source.spacing[2]]], gridScales=self.source.spacing)
         hfmIn['order'] = 2
+
     
         # X,Y,Z = hfmIn.Grid()
     
         target_points = np.concatenate((np.expand_dims(X_world[target], 1), np.expand_dims(Y_world[target], 1), np.expand_dims(Z_world[target], 1)), axis=1)
         ntarget = target_points.shape[0]
-    
+
         # Define hfm model
     
         hfmIn.update({
@@ -55,6 +62,16 @@ class SolverFMM(Solver):
             'exportGeodesicFlow': True,  # Export relevant data
             'exportValues': True
         })
+
+        if roi is not None:
+
+            # reduce grid of ROI if necessary
+            if self.domain is not None:
+                roi.reduceGrid_mask(self.domain)
+
+            roi_points = np.concatenate((np.expand_dims(X_world[roi.imageArray], 1), np.expand_dims(Y_world[roi.imageArray], 1), np.expand_dims(Z_world[roi.imageArray], 1)), axis=1)
+
+            hfmIn['tips'] = roi_points
     
         # initialize metric tensor components
     
@@ -73,14 +90,27 @@ class SolverFMM(Solver):
                             
         # Run Riemann model
 
-        hfmIn['walls'] = self.barriers.imageArray
+        hfmIn['walls'] = self.boundary.imageArray
         hfmIn['metric'] = Riemann(MT)
         #hfmIn['stopAtDistance'] = 20.
         #hfmIn['euclideanScale'] = list(self.source.spacing)
         #hfmIn['stopAtEuclideanLength'] = 20. # stopping criteria
+
         hfmOut = hfmIn.Run()
-    
+
         # store result
         riemann3D = hfmOut['values']
         # euclidean3D = hfmOut['euclideanLengths'] # Euclidean length of geodesics
-        return riemann3D
+        flowX, flowY, flowZ = hfmOut['flow']
+
+        if self.domain is not None:
+            riemann3D = self.getArray_fullGrid(riemann3D)
+            flowX = self.getArray_fullGrid(flowX)
+            flowY = self.getArray_fullGrid(flowY)
+            flowZ = self.getArray_fullGrid(flowZ)
+
+        if roi is not None:
+            geodesics_world = hfmOut['geodesics']
+            return riemann3D, (flowX, flowY, flowZ), geodesics_world
+        else:
+            return riemann3D

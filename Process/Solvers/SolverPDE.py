@@ -8,6 +8,7 @@ Created on Wed Feb 15 10:56:55 2023
 import numpy as np
 
 from opentps.core.data.images._image3D import Image3D
+
 from Process.Solvers import Solver
 from Process.Tensors import TensorDiffusion
 
@@ -19,10 +20,10 @@ class SolverPDE(Solver):
           DT[..., 0:3, 0:3] = np.eye(3)          
           tensor = TensorDiffusion(imageArray=DT, spacing=source.spacing, origin=source.origin)
         
-      super().__init__(source=source, barriers=barriers, tensor=tensor, domain=domain)
+      super().__init__(source=source, boundary=barriers, tensor=tensor, domain=domain)
 
-      if self.barriers is not None:
-        self.tensor.setBarrier(self.barriers.imageArray)
+      if self.boundary is not None:
+        self.tensor.setBarrier(self.boundary.imageArray)
     
     def getDensity(self, dict, deltat = 0.01):
             
