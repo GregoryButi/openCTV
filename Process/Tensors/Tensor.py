@@ -179,7 +179,7 @@ class Tensor(Image3D):
       
   def smooth(self, sigma=1):
       
-      imageTensor = initializeTensorImage(self.gridSize)
+      imageTensor = self.initializeTensorImage(self.gridSize)
       for i in [0, 1, 2]:
           for j in [0, 1, 2]:
               imageTensor[..., i, j] = gaussian_filter(self.imageArray[..., i, j], sigma=sigma)
