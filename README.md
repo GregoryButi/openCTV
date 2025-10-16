@@ -95,5 +95,12 @@ After installing the DIPY package, replace the following lines in get_simplified
 
 line 944
     Dinv = self.domain_grid2world
-    
 
+
+IMAGE SEGMENTATION
+
+Follow the following steps if you want to generate CTV for the brain using a constrained distance tranform where the expansion is constrained by autosegmented brain barrier strucures: 
+
+1) Please download the model training results from folder https://huggingface.co/GregoryButi/CT_Brain_Segmentation_Radiotherapy
+2) Create a folder in your Python project starting with "Dataset" (in order to use the nnUNet inference scripts available in this GitHub), for example "Model/nnUNet_results/Dataset_CT_Brain_Segmentation_Radiotherapy"
+3) Run the script Workflows/Brain/CTV_segmentationBarriers_slider.py
