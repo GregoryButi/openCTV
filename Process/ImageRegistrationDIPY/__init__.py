@@ -1,0 +1,3 @@
+from .ImageRegistration import ImageRegistration
+from .ImageRegistrationRigid import ImageRegistrationRigid
+from .ImageRegistrationDeformable import ImageRegistrationDeformable
