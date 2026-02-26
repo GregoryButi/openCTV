@@ -14,8 +14,8 @@ def run_segmentation(input_files, model, model_config):
     nnUNet_directory = os.path.abspath(f'../../Models/nnUNet')
 
     # create temporary directory
-    tmp_dir = 'tmp'
-    os.mkdir(tmp_dir)
+    tmp_dir = 'tmp_01'
+    os.makedirs(tmp_dir, exist_ok=True)
 
     # copy input files into temporary directory
     for file, i in zip(input_files, np.arange(len(input_files))):
