@@ -1,2 +1,11 @@
 Input/
 Models/
+Workflows/Brain/GreenJ_parametric
+Workflows/Brain/MedIA_coordinateTransform
+Workflows/Brain/phiRO_segmentation
+Workflows/Brain/PMB_anisotropy
+Workflows/Brain/UncertaintyQuantification
+Workflows/Brain/ValidationRecurrences
+Workflows/Brain/Verification
+Workflows/Muscle
+Workflows/Spine
