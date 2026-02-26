@@ -7,11 +7,8 @@ Created on Mon May 20 14:12:05 2024
 """
 
 import numpy as np
-import os
-
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass as com
-from matplotlib.widgets import Slider
 from dipy.io.image import load_nifti, save_nifti
 from totalsegmentator.python_api import totalsegmentator
 
