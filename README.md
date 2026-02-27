@@ -18,7 +18,7 @@ MODIFICATION OF EXISTING PACKAGES
 After installing the opentps package, inside the package, do the following:
 
 1. add the following argument to the __init__ function in the ROIMask class in opentps/core/data/images/_roiMask.py.
-2. add the following function yo the ROIMask class in opentps/core/data/images/_roiMask.py:
+2. add the following function to the ROIMask class in opentps/core/data/images/_roiMask.py:
 
     def getMeshpoints(self):
         polygonMeshList = self.getROIContour().polygonMesh
