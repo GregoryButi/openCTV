@@ -1,4 +1,4 @@
-pip install opentps
-pip install dipy
-pip install TotalSegmentator
-pip install agd
+opentps
+dipy
+TotalSegmentator
+agd
