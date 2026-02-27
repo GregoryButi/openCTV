@@ -146,6 +146,14 @@ def main():
     ctv_DL.smoothMask(size=2)
     ctv_TS.smoothMask(size=2)
 
+    # save CTV
+
+    name_CTV_DL = 'CTV_auto'
+    name_CTV_TS = 'CTV_TS'
+
+    save_nifti(name_CTV_DL + '.nii.gz', ctv_DL.imageArray.astype(float), static_grid2world)
+    save_nifti(name_CTV_TS + '.nii.gz', ctv_TS.imageArray.astype(float), static_grid2world)
+
     # voxel display
     COM = np.array(com(gtv))
     Z_coord = int(COM[2])
@@ -167,7 +175,7 @@ def main():
     plt.contour(ctv_TS.imageArray[:, :, Z_coord].transpose(), extent=[x[0], x[-1], y[0], y[-1]], colors='orange', linewidths=1.5, linestyles='dashed')
     plt.tick_params(left=False, right=False, labelleft=False, labelbottom=False, bottom=False)
 
-    plt.savefig("plot.pdf", bbox_inches='tight')
+    plt.savefig(f"plot_{PID}.pdf", bbox_inches='tight')
 
 if __name__ == "__main__":
     main()
