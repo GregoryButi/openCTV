@@ -42,7 +42,6 @@ margin = 15  # [mm]
 
 path_CT = f'../../Input/{PID}/Therapy-scan/MRI_CT/CT.nii.gz'
 path_RTstructs = f'../../Input/{PID}/Therapy-scan/Structures'
-path_RTstructs_DL = f'../../Input/{PID}/Therapy-scan/Structures_{model_segmentation}_{config_segmentation}'
 path_TotalSegmentator = f'../../Input/{PID}/Therapy-scan/Structures_totalsegmentator_new'
 
 def main():

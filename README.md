@@ -18,8 +18,25 @@ MODIFICATION OF EXISTING PACKAGES
 After installing the opentps package, inside the package, do the following:
 
 1. add the following argument to the __init__ function in the ROIMask class in opentps/core/data/images/_roiMask.py.
-2. add the following argument to the __init__ function in the Image3D class in opentps/core/data/images/_image3D.py: grid2world=[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]], and add the following attribute self._grid2world = np.array(grid2world).
-3. add the following functions to the Image3D class in opentps/core/data/images/_image3D.py:
+2. add the following function yo the ROIMask class in opentps/core/data/images/_roiMask.py:
+
+    def getMeshpoints(self):
+        polygonMeshList = self.getROIContour().polygonMesh
+
+        polygonMeshArray = np.empty((0, 3), int)
+        for zSlice in polygonMeshList:
+            for point in np.arange(0, len(zSlice), 3):
+                meshpoint = np.zeros((1, 3))
+                meshpoint[0, 0] = zSlice[point]
+                meshpoint[0, 1] = zSlice[point + 1]
+                meshpoint[0, 2] = zSlice[point + 2]
+
+                polygonMeshArray = np.append(polygonMeshArray, meshpoint, axis=0)
+
+        return polygonMeshArray
+
+3. add the following argument to the __init__ function in the Image3D class in opentps/core/data/images/_image3D.py: grid2world=[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]], and add the following attribute self._grid2world = np.array(grid2world).
+4. add the following functions to the Image3D class in opentps/core/data/images/_image3D.py:
 
   @property
   def grid2world(self) -> np.ndarray:
@@ -131,5 +148,6 @@ IMAGE SEGMENTATION
 Follow the following steps if you want to generate CTV for the brain using a constrained distance tranform where the expansion is constrained by autosegmented brain barrier strucures (as in the paper "Buti et al (2025) - Clinical target volumes for glioma–Automated delineation to improve neuroanatomic consistency" (https://doi.org/10.1016/j.phro.2025.100865)):
 
 1. Please download the model training results from folder https://huggingface.co/GregoryButi/CT_Brain_Segmentation_Radiotherapy
-2. Create a folder in your Python project starting with "Dataset" (in order to use the nnUNet inference scripts available in this GitHub), for example "Model/nnUNet_results/Dataset_CT_Brain_Segmentation_Radiotherapy"
+2. Create a folder in your Python project starting with "Dataset_" (in order to use the nnUNet inference scripts available in this GitHub), for example "~/openCTV/Models/nnUNet_results/Dataset_CT_Brain_Segmentation_Radiotherapy".
+3. Create a folder with the patient data (e.g. ~/openCTV/Input) and upload nifti files of a CT image and GTV mask.
 3. Run the script Workflows/Brain/CTV_segmentationBarriers_slider.py or Workflows/Brain/CTV_barriers_slider_validation.py for comparison to TotalSegmentator. Please consult https://github.com/wasserth/TotalSegmentator for obtaining the license of the brain_structures model.
