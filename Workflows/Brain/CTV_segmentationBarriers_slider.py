@@ -26,12 +26,12 @@ visualization = True
 postprocessing_barriers = True
 
 # input
-patient_dir = '/media/gregory/Elements/Data/MGH_Glioma/GLIS-RT_Processed/GLI_016_GBM'
-path_CT = os.path.join(patient_dir, f'Therapy-scan/MRI_CT/CT.nii.gz')
-path_RTstructs_manual = os.path.join(patient_dir, f'Therapy-scan/Structures')
+
+PID = 'GBM'
+path_CT = f'../../Input/{PID}/Therapy-scan/MRI_CT/CT.nii.gz'
+path_RTstructs_manual = f'../../Input/{PID}/Therapy-scan/Structures'
 
 barrier_names = ['Brain', 'Brainstem', 'Cerebellum', 'Chiasm', 'OpticNerve_L', 'OpticNerve_R', 'Midline', 'Ventricles_connected']
-barrier_names_eval = ['Brain', 'Brainstem', 'Cerebellum', 'Chiasm', 'OpticNerves', 'Midline', 'Ventricles_connected']
 
 # nn-UNet parameters
 model_segmentation = 'Dataset_CT_Brain_Segmentation_Radiotherapy'
@@ -124,8 +124,8 @@ RTs_DL.setMask('BS', bsDL, spacing=voxel_size, roi_type='Barrier')
 RTs_DL.setMask('GTV', gtv, spacing=voxel_size, roi_type='GTV')
 
 # define CTV objects
-ctv = CTVGeometric(rts=RTs, model=model, spacing=voxel_size)
-ctv_DL = CTVGeometric(rts=RTs_DL, model=model, spacing=voxel_size)
+ctv = CTVGeo(rts=RTs, model=model, spacing=voxel_size)
+ctv_DL = CTVGeo(rts=RTs_DL, model=model, spacing=voxel_size)
 
 # define calculation domain
 GTVBox = RTs.getBoundingBox('GTV', int(margin) + 15)
